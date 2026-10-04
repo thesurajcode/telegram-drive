@@ -1,0 +1,59 @@
+services:
+  # 1. PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: telegram_drive_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-telegram_drive}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-telegram_drive}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. Node.js Backend (Express + GramJS + Prisma)
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.prod
+    container_name: telegram_drive_server
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: 3001
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-telegram_drive}?schema=public
+      TELEGRAM_API_ID: ${TELEGRAM_API_ID}
+      TELEGRAM_API_HASH: ${TELEGRAM_API_HASH}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHANNEL_ID: ${TELEGRAM_CHANNEL_ID}
+      TELEGRAM_SESSION_STRING: ${TELEGRAM_SESSION_STRING:-}
+      TELEGRAM_UPLOAD_WORKERS: ${TELEGRAM_UPLOAD_WORKERS:-8}
+      APP_PASSWORD: ${APP_PASSWORD:-@9525}
+    volumes:
+      - uploads_data:/app/uploads
+
+  # 3. High-Performance Web Frontend (Compiled React + Nginx Reverse Proxy)
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile.prod
+    container_name: telegram_drive_client
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+
+volumes:
+  postgres_data:
+    driver: local
+  uploads_data:
+    driver: local

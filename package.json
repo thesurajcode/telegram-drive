@@ -1,0 +1,27 @@
+{
+  "name": "telegram-photos-drive",
+  "version": "1.0.0",
+  "description": "Infinite personal cloud storage with Google Photos UI powered by Telegram MTProto and PostgreSQL",
+  "scripts": {
+    "dev": "docker compose up",
+    "dev:build": "docker compose up --build",
+    "prod": "docker compose -f docker-compose.prod.yml up -d --build",
+    "prod:down": "docker compose -f docker-compose.prod.yml down",
+    "down": "docker compose down",
+    "logs": "docker compose logs -f",
+    "logs:server": "docker compose logs -f server",
+    "logs:client": "docker compose logs -f client"
+  },
+  "keywords": [
+    "telegram",
+    "cloud-storage",
+    "google-photos",
+    "mtproto",
+    "prisma",
+    "postgresql",
+    "react",
+    "vite"
+  ],
+  "author": "Suraj Kumar",
+  "license": "MIT"
+}

@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+/.pnp
+.pnp.js
+
+# Production build outputs
+dist/
+build/
+
+# Local Environment Variables & Secrets (CRITICAL: Do NOT commit)
+.env
+*.env
+!.env.example
+server/.env
+server/.env.local
+server/.env.production
+client/.env
+client/.env.local
+client/.env.production
+
+# Temporary file uploads buffer
+server/uploads/*
+!server/uploads/.gitkeep
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Editor / OS directories
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Docker / Prisma local artifacts
+prisma/*.db
+prisma/*.db-journal

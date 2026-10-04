@@ -1,0 +1,28 @@
+FROM node:20-slim
+
+# Install OpenSSL for Prisma engine compatibility
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy dependency manifests
+COPY package*.json ./
+COPY prisma ./prisma/
+
+# Install dependencies and pre-generate Prisma client
+RUN npm install
+RUN npx prisma generate
+
+# Copy the rest of the application code
+COPY . .
+
+# Ensure uploads directory exists
+RUN mkdir -p uploads
+
+# Expose backend API port
+EXPOSE 3001
+
+ENV NODE_ENV=production
+
+# Run schema push to ensure DB is migrated, then start node production server
+CMD ["sh", "-c", "npx prisma generate && npx prisma db push && node src/server.js"]
