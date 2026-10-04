@@ -1,7 +1,7 @@
 const fs = require('fs');
 const { CustomFile } = require('telegram/client/uploads');
 const prisma = require('../config/prisma');
-const { getTelegramClient, getChannelEntity } = require('../config/telegram');
+const { getTelegramClient, getChannelEntity, resetTelegramClient } = require('../config/telegram');
 
 // Ensure BigInt serializes cleanly to JSON across all API responses
 BigInt.prototype.toJSON = function () {
@@ -43,6 +43,45 @@ function formatETA(seconds) {
 }
 
 /**
+ * Creates a real-time chunk progress callback for GramJS sendFile
+ */
+function createProgressCallback(uploadId, fileName, size, startTime) {
+  return (progress) => {
+    let percent = 0;
+    let uploaded = 0;
+
+    if (progress <= 1) {
+      percent = Math.min(100, Math.round(progress * 100));
+      uploaded = Math.round(progress * size);
+    } else {
+      uploaded = Math.min(size, progress);
+      percent = Math.min(100, Math.round((uploaded / size) * 100));
+    }
+
+    const now = Date.now();
+    const elapsedSec = (now - startTime) / 1000;
+    const bytesPerSec = elapsedSec > 0 ? uploaded / elapsedSec : 0;
+    const remainingBytes = size - uploaded;
+    const etaSeconds = bytesPerSec > 0 ? remainingBytes / bytesPerSec : 0;
+
+    if (uploadId) {
+      uploadProgressMap.set(uploadId, {
+        uploadId,
+        fileName,
+        status: 'telegram_upload',
+        percent,
+        uploadedBytes: uploaded,
+        totalBytes: size,
+        speed: formatSpeed(bytesPerSec),
+        speedBytesPerSec: bytesPerSec,
+        eta: formatETA(etaSeconds),
+        etaSeconds: Math.round(etaSeconds),
+      });
+    }
+  };
+}
+
+/**
  * Retrieves the current real-time Telegram upload progress for a specific uploadId.
  */
 function getUploadProgress(req, res) {
@@ -60,7 +99,8 @@ function getUploadProgress(req, res) {
 }
 
 /**
- * High-speed multi-worker upload to Telegram blob storage with real-time MTProto progress tracking.
+ * High-speed upload to Telegram blob storage with real-time MTProto progress tracking.
+ * Safe for Telegram Bot accounts (uses 1-worker chunk streaming to avoid 406: AUTH_KEY_DUPLICATED).
  */
 async function uploadFile(req, res) {
   if (!req.file) {
@@ -74,8 +114,6 @@ async function uploadFile(req, res) {
   const size = req.file.size;
 
   const startTime = Date.now();
-  let lastUpdate = Date.now();
-  let lastBytes = 0;
 
   if (uploadId) {
     uploadProgressMap.set(uploadId, {
@@ -93,58 +131,48 @@ async function uploadFile(req, res) {
   try {
     console.log(`📤 Starting Telegram upload: ${fileName} (${(size / (1024 * 1024)).toFixed(2)} MB)`);
 
-    const client = await getTelegramClient();
-    const channel = await getChannelEntity(client);
+    let client = await getTelegramClient();
+    let channel = await getChannelEntity(client);
 
     // Create GramJS CustomFile from temporary disk buffer
     const toUpload = new CustomFile(fileName, size, tempFilePath);
 
-    // Configurable parallel workers: 8 parallel MTProto chunks for high-speed transfers
-    const workers = parseInt(process.env.TELEGRAM_UPLOAD_WORKERS || '8', 10);
+    // Telegram Bot accounts ONLY support 1 connection per session.
+    // Multiple workers (>1) cause Telegram server error: 406: AUTH_KEY_DUPLICATED (caused by upload.SaveFilePart)
+    const configuredWorkers = parseInt(process.env.TELEGRAM_UPLOAD_WORKERS || '1', 10);
+    const workers = Math.max(1, Math.min(configuredWorkers, 1));
 
-    // Send file to the private Telegram channel with real-time chunk progress callback
-    const message = await client.sendFile(channel, {
-      file: toUpload,
-      caption: fileName,
-      forceDocument: true, // Prevents Telegram transcoding errors & preserves full quality
-      workers: workers, // 8 parallel connections maximize upload throughput
-      progressCallback: (progress) => {
-        // GramJS yields a float 0.0 - 1.0 (or total bytes depending on version)
-        let percent = 0;
-        let uploaded = 0;
+    const progressCallback = createProgressCallback(uploadId, fileName, size, startTime);
 
-        if (progress <= 1) {
-          percent = Math.min(100, Math.round(progress * 100));
-          uploaded = Math.round(progress * size);
-        } else {
-          uploaded = Math.min(size, progress);
-          percent = Math.min(100, Math.round((uploaded / size) * 100));
-        }
-
-        const now = Date.now();
-        const elapsedSec = (now - startTime) / 1000;
-
-        // Calculate moving speed
-        const bytesPerSec = elapsedSec > 0 ? uploaded / elapsedSec : 0;
-        const remainingBytes = size - uploaded;
-        const etaSeconds = bytesPerSec > 0 ? remainingBytes / bytesPerSec : 0;
-
-        if (uploadId) {
-          uploadProgressMap.set(uploadId, {
-            uploadId,
-            fileName,
-            status: 'telegram_upload',
-            percent,
-            uploadedBytes: uploaded,
-            totalBytes: size,
-            speed: formatSpeed(bytesPerSec),
-            speedBytesPerSec: bytesPerSec,
-            eta: formatETA(etaSeconds),
-            etaSeconds: Math.round(etaSeconds),
-          });
-        }
-      },
-    });
+    let message;
+    try {
+      // Send file to the private Telegram channel with real-time chunk progress callback
+      message = await client.sendFile(channel, {
+        file: toUpload,
+        caption: fileName,
+        forceDocument: true, // Prevents Telegram transcoding errors & preserves full quality
+        workers: workers,
+        progressCallback,
+      });
+    } catch (sendErr) {
+      // Automatic recovery if Telegram server reports AUTH_KEY_DUPLICATED
+      if (sendErr.message && sendErr.message.includes('AUTH_KEY_DUPLICATED')) {
+        console.warn('⚠️ AUTH_KEY_DUPLICATED detected during sendFile! Resetting MTProto session and retrying...');
+        client = await resetTelegramClient();
+        channel = await getChannelEntity(client);
+        const retryFile = new CustomFile(fileName, size, tempFilePath);
+        message = await client.sendFile(channel, {
+          file: retryFile,
+          caption: fileName,
+          forceDocument: true,
+          workers: 1,
+          progressCallback,
+        });
+        console.log('✅ Retry successful after MTProto session reset!');
+      } else {
+        throw sendErr;
+      }
+    }
 
     console.log(`✅ Upload complete! Telegram Message ID: ${message.id}`);
 
@@ -183,6 +211,10 @@ async function uploadFile(req, res) {
     });
   } catch (error) {
     console.error('❌ Error during uploadFile:', error);
+
+    if (error.message && error.message.includes('AUTH_KEY_DUPLICATED')) {
+      resetTelegramClient().catch(() => {});
+    }
 
     if (uploadId) {
       uploadProgressMap.set(uploadId, {

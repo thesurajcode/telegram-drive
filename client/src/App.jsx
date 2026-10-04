@@ -928,7 +928,7 @@ export default function App() {
                       ) : (
                         <Clock className="w-3.5 h-3.5 text-slate-400" />
                       )}
-                      2. Server ➔ Telegram MTProto Cloud (8 Workers)
+                      2. Server ➔ Telegram MTProto Cloud Stream
                     </span>
                     <span className="text-indigo-600 font-mono">
                       {uploadStatus.telegramPercent}%
@@ -972,7 +972,7 @@ export default function App() {
               </h2>
               <p className="text-xs sm:text-sm text-slate-500 max-w-lg">
                 Upload up to 2GB per file. Files are stored uncompressed in your private Telegram
-                channel via 8-worker MTProto streaming with PostgreSQL metadata.
+                channel via direct MTProto streaming with PostgreSQL metadata.
               </p>
               <div className="flex flex-wrap items-center justify-center gap-3 mt-1 text-xs font-medium text-slate-400">
                 <span className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">

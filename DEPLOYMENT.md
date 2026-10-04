@@ -23,8 +23,8 @@ Keep these values handy when setting environment variables on Render:
 | `TELEGRAM_API_HASH` | `96989c1b116db083ccfe5e3d6778920d` | Telegram API Hash |
 | `TELEGRAM_BOT_TOKEN` | `8835309651:AAFcJhdoyjut3a7vy6331ibrj00_9cyVFTA` | Bot Token (@suraj_photos_bot) |
 | `TELEGRAM_CHANNEL_ID` | `-1004233045765` | Private Channel ID |
-| `TELEGRAM_SESSION_STRING` | `1BQANOTEuMTA4LjU2LjE2MgG7uuo7/f8yyY6NuVd/eUtiEOP5LPoNOYXYMCSQfDHpUMZjdi6pbFIOV/NY5PC8TzK/4l7BoK/D1s+3yFuYW4H1cnoxLmkmFijy9lKVFicmF8+3YiZobPUQ7qT9sUZVZ8uW9lXAzocJ5Czj57dUrQ/Vb71xD9otTLKKQaMuEaY9n89KlHQ77QwSXcd+s8R029VhBic6rQ8k6vlq2jFs97rcmwyWpwX0wQ3n46O4zhIN5s0orzgL/qT9dAzdNrpSeZGnY6Si5AYtDms3xx8rjbiV4NHIsk60DgaCl7Qf45Kx52Ah/U9YfjHtg5nfn0zx0W8MORxa03fda/xLSFPYku7JvA==` | Saved MTProto session |
-| `TELEGRAM_UPLOAD_WORKERS` | `8` | 8 parallel chunk upload streams |
+| `TELEGRAM_SESSION_STRING` | *(Leave empty on fresh deploy)* | Server automatically generates session |
+| `TELEGRAM_UPLOAD_WORKERS` | `1` | 1 worker prevents AUTH_KEY_DUPLICATED for bots |
 | `NODE_ENV` | `production` | Production mode |
 
 ---
@@ -72,8 +72,8 @@ Because Render's free database expires after 30 days, we use **Neon.tech** which
    - `TELEGRAM_API_HASH` = `96989c1b116db083ccfe5e3d6778920d`
    - `TELEGRAM_BOT_TOKEN` = `8835309651:AAFcJhdoyjut3a7vy6331ibrj00_9cyVFTA`
    - `TELEGRAM_CHANNEL_ID` = `-1004233045765`
-   - `TELEGRAM_SESSION_STRING` = `1BQANOTEuMTA4LjU2LjE2MgG7uuo7/f8yyY6NuVd/eUtiEOP5LPoNOYXYMCSQfDHpUMZjdi6pbFIOV/NY5PC8TzK/4l7BoK/D1s+3yFuYW4H1cnoxLmkmFijy9lKVFicmF8+3YiZobPUQ7qT9sUZVZ8uW9lXAzocJ5Czj57dUrQ/Vb71xD9otTLKKQaMuEaY9n89KlHQ77QwSXcd+s8R029VhBic6rQ8k6vlq2jFs97rcmwyWpwX0wQ3n46O4zhIN5s0orzgL/qT9dAzdNrpSeZGnY6Si5AYtDms3xx8rjbiV4NHIsk60DgaCl7Qf45Kx52Ah/U9YfjHtg5nfn0zx0W8MORxa03fda/xLSFPYku7JvA==`
-   - `TELEGRAM_UPLOAD_WORKERS` = `8`
+   - `TELEGRAM_SESSION_STRING` = *(Leave blank/empty on new deploy, the bot creates its own session)*
+   - `TELEGRAM_UPLOAD_WORKERS` = `1`
    - `APP_PASSWORD` = `@9525`
    - `NODE_ENV` = `production`
 7. Click **Deploy Web Service**!

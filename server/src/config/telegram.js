@@ -100,15 +100,29 @@ async function initTelegramClient() {
       exportSessionString(clientInstance);
     }
 
-    const me = await clientInstance.getMe();
-    console.log(`🤖 Logged in as: @${me.username || me.firstName} (ID: ${me.id})`);
+    try {
+      const me = await clientInstance.getMe();
+      console.log(`🤖 Logged in as: @${me.username || me.firstName} (ID: ${me.id})`);
+    } catch (meErr) {
+      if (meErr.message && meErr.message.includes('AUTH_KEY_DUPLICATED')) {
+        console.warn('⚠️ AUTH_KEY_DUPLICATED on saved session. Discarding and reconnecting with Bot Token...');
+        return await resetTelegramClient();
+      }
+      throw meErr;
+    }
 
     return clientInstance;
   } catch (error) {
     console.error('❌ Failed to initialize Telegram client:', error);
-    // If the session string was invalid/revoked, retry once with bot token
+    // If the session string was invalid/revoked or duplicate key, retry once with bot token
     if (sessionString && botToken) {
       console.log('🔄 Retrying login using TELEGRAM_BOT_TOKEN...');
+      try {
+        if (clientInstance) {
+          await clientInstance.disconnect();
+        }
+      } catch (_) {}
+
       const fallbackSession = new StringSession('');
       clientInstance = new TelegramClient(fallbackSession, apiId, apiHash, {
         connectionRetries: 5,
@@ -122,6 +136,28 @@ async function initTelegramClient() {
     }
     throw error;
   }
+}
+
+/**
+ * Force-disconnects the current client, clears any stale session,
+ * and initializes a fresh Telegram client instance via Bot Token.
+ * @returns {Promise<TelegramClient>}
+ */
+async function resetTelegramClient() {
+  console.log('🔄 Resetting Telegram MTProto client session...');
+  if (clientInstance) {
+    try {
+      await clientInstance.disconnect();
+    } catch (e) {
+      // Disconnect error can be safely ignored
+    }
+    clientInstance = null;
+  }
+
+  // Clear environment variable for this process so it uses Bot Token
+  process.env.TELEGRAM_SESSION_STRING = '';
+
+  return await initTelegramClient();
 }
 
 /**
@@ -172,6 +208,8 @@ async function getChannelEntity(client) {
 module.exports = {
   initTelegramClient,
   getTelegramClient,
+  resetTelegramClient,
   exportSessionString,
   getChannelEntity,
 };
+

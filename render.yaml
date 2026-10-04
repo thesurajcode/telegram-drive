@@ -12,7 +12,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: TELEGRAM_UPLOAD_WORKERS
-        value: 8
+        value: 1
       - key: APP_PASSWORD
         value: "@9525"
       - key: DATABASE_URL
