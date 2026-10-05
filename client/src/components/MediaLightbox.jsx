@@ -16,21 +16,20 @@ import {
   FileText,
   File,
   ExternalLink,
-  Play,
   RotateCcw,
+  SlidersHorizontal,
 } from 'lucide-react';
 
 /**
- * High-performance, touch-gestured Media Lightbox for Photos, Videos, and Documents
- * Supports:
- * - Touch swipe left/right to move smoothly between media
- * - Swipe down to dismiss
- * - Keyboard navigation (Left, Right, Escape)
- * - Double-tap / Click zoom for photos
- * - Bottom thumbnail filmstrip scrubber with auto-centering
- * - Real-time slide transitions
- * - Background preloading of adjacent images
- * - Mobile-optimized fullscreen layout
+ * Mobile-First Media Lightbox with Ultra-Smooth Navigation
+ * Features:
+ * - 1-Tap Screen Edges: Tap right edge for Next, tap left edge for Prev (Instagram/Telegram style)
+ * - Thumb-Friendly On-Screen Navigation: Visible chevron buttons + Bottom Next/Prev Bar on mobile
+ * - Touch Swipe Gestures: Smooth real-time slide with spring physics & swipe-down to close
+ * - Directional Slide Animations: Next slides from right, Prev slides from left
+ * - Multi-touch Pinch to Zoom & Double-Tap Zoom for photos
+ * - Interactive Auto-Centering Thumbnail Scrubber
+ * - Background Image Preloading for instant, zero-delay switching
  */
 export default function MediaLightbox({
   files = [],
@@ -47,8 +46,8 @@ export default function MediaLightbox({
   downloadProgress = 0,
   downloadSpeed = '',
 }) {
-  const [slideDirection, setSlideDirection] = useState(null); // 'next' | 'prev' | null
-  const [zoomLevel, setZoomLevel] = useState(1); // 1 = fit, 2 = 2x zoom
+  const [slideDirection, setSlideDirection] = useState('next'); // 'next' | 'prev'
+  const [zoomLevel, setZoomLevel] = useState(1);
   const [showInfo, setShowInfo] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [showFilmstrip, setShowFilmstrip] = useState(true);
@@ -61,6 +60,8 @@ export default function MediaLightbox({
   const [isSwiping, setIsSwiping] = useState(false);
   const touchStartRef = useRef({ x: 0, y: 0, time: 0 });
   const lastTapRef = useRef(0);
+  const pinchStartDistRef = useRef(null);
+  const pinchStartZoomRef = useRef(1);
 
   const containerRef = useRef(null);
   const filmstripRef = useRef(null);
@@ -80,7 +81,7 @@ export default function MediaLightbox({
   const fileType = currentFile ? getFileType(currentFile) : 'document';
   const streamUrl = currentFile ? getStreamUrl(currentFile.telegramMessageId) : '';
 
-  // Reset zoom and load state when file changes
+  // Reset zoom, errors, and gestures when changing files
   useEffect(() => {
     setZoomLevel(1);
     setIsMediaLoaded(false);
@@ -102,7 +103,7 @@ export default function MediaLightbox({
     onSelectFile(files[currentIndex - 1]);
   }, [hasPrev, currentIndex, files, onSelectFile]);
 
-  // Preload adjacent images for instantaneous transitions
+  // Preload adjacent images into memory for instant transitions
   useEffect(() => {
     if (currentIndex < 0) return;
 
@@ -115,6 +116,8 @@ export default function MediaLightbox({
 
     if (hasNext) preloadImage(files[currentIndex + 1]);
     if (hasPrev) preloadImage(files[currentIndex - 1]);
+    // Also preload +2 on fast networks
+    if (currentIndex + 2 < files.length) preloadImage(files[currentIndex + 2]);
   }, [currentIndex, files, hasNext, hasPrev, getFileType, getStreamUrl]);
 
   // Keyboard navigation
@@ -122,9 +125,9 @@ export default function MediaLightbox({
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         onClose();
-      } else if (e.key === 'ArrowRight') {
+      } else if (e.key === 'ArrowRight' || e.key === 'KeyD') {
         goToNext();
-      } else if (e.key === 'ArrowLeft') {
+      } else if (e.key === 'ArrowLeft' || e.key === 'KeyA') {
         goToPrev();
       } else if (e.key === 'i' || e.key === 'I') {
         setShowInfo((prev) => !prev);
@@ -137,7 +140,7 @@ export default function MediaLightbox({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [goToNext, goToPrev, onClose]);
 
-  // Auto-scroll filmstrip to keep active item in center
+  // Auto-scroll filmstrip to keep active item centered
   useEffect(() => {
     if (activeThumbRef.current && filmstripRef.current) {
       activeThumbRef.current.scrollIntoView({
@@ -160,27 +163,27 @@ export default function MediaLightbox({
     }
   };
 
-  // Toggle Zoom Level (fit vs 2x)
+  // Toggle Zoom Level (1x vs 2.2x)
   const toggleZoom = () => {
     if (fileType !== 'image') return;
-    setZoomLevel((prev) => (prev === 1 ? 2 : 1));
+    setZoomLevel((prev) => (prev > 1 ? 1 : 2.2));
   };
 
-  // Double-tap on mobile to zoom
-  const handleDoubleTap = () => {
-    const now = Date.now();
-    if (now - lastTapRef.current < 300) {
-      toggleZoom();
-    } else {
-      // Single tap toggles control visibility
-      setShowControls((prev) => !prev);
-    }
-    lastTapRef.current = now;
-  };
-
-  // Touch gesture handlers for mobile swipe
+  // Multi-touch pinch & single-touch gesture handlers
   const handleTouchStart = (e) => {
+    if (e.touches.length === 2) {
+      // Pinch to zoom start
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      pinchStartDistRef.current = dist;
+      pinchStartZoomRef.current = zoomLevel;
+      return;
+    }
+
     if (zoomLevel > 1) return; // Allow natural pan when zoomed
+
     const touch = e.touches[0];
     touchStartRef.current = {
       x: touch.clientX,
@@ -191,12 +194,24 @@ export default function MediaLightbox({
   };
 
   const handleTouchMove = (e) => {
+    if (e.touches.length === 2 && pinchStartDistRef.current) {
+      // Handle pinch zoom
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const scale = dist / pinchStartDistRef.current;
+      const newZoom = Math.min(3, Math.max(1, pinchStartZoomRef.current * scale));
+      setZoomLevel(newZoom);
+      return;
+    }
+
     if (!isSwiping || zoomLevel > 1) return;
     const touch = e.touches[0];
     const dx = touch.clientX - touchStartRef.current.x;
     const dy = touch.clientY - touchStartRef.current.y;
 
-    // Apply friction/resistance at boundaries
+    // Apply soft resistance at beginning/end
     let adjustedDx = dx;
     if ((!hasNext && dx < 0) || (!hasPrev && dx > 0)) {
       adjustedDx = dx * 0.25;
@@ -206,6 +221,7 @@ export default function MediaLightbox({
   };
 
   const handleTouchEnd = () => {
+    pinchStartDistRef.current = null;
     if (!isSwiping || zoomLevel > 1) return;
     setIsSwiping(false);
 
@@ -216,13 +232,13 @@ export default function MediaLightbox({
     const velocityX = absDx / (timeElapsed || 1);
 
     // 1. Swipe Down to Close
-    if (dy > 90 && absDy > absDx * 1.3) {
+    if (dy > 80 && absDy > absDx * 1.3) {
       onClose();
       return;
     }
 
-    // 2. Horizontal Swipe Navigation (threshold 45px or quick flick)
-    if (absDx > 45 || velocityX > 0.4) {
+    // 2. Responsive Horizontal Swipe (threshold: 35px or quick velocity flick)
+    if (absDx > 35 || velocityX > 0.35) {
       if (dx < 0 && hasNext) {
         goToNext();
       } else if (dx > 0 && hasPrev) {
@@ -233,18 +249,39 @@ export default function MediaLightbox({
     setTouchDelta({ x: 0, y: 0 });
   };
 
+  // Center tap vs double-tap detection
+  const handleStageClick = (e) => {
+    // If user clicked a button or control, ignore
+    if (e.target.closest('button') || e.target.closest('a')) return;
+
+    const now = Date.now();
+    if (now - lastTapRef.current < 280) {
+      // Double tap -> Zoom toggle
+      toggleZoom();
+    } else {
+      // Single tap -> Toggle controls
+      setShowControls((prev) => !prev);
+    }
+    lastTapRef.current = now;
+  };
+
   if (!currentFile) return null;
 
-  // Compute transform style for swipe dragging animation
-  const mediaTransform = isSwiping
-    ? `translate3d(${touchDelta.x}px, ${Math.max(0, touchDelta.y * 0.4)}px, 0) scale(${
-        zoomLevel > 1 ? zoomLevel : Math.max(0.9, 1 - Math.abs(touchDelta.y) / 800)
+  // Real-time transform while dragging with finger
+  const dragTransform = isSwiping
+    ? `translate3d(${touchDelta.x}px, ${Math.max(0, touchDelta.y * 0.35)}px, 0) scale(${
+        zoomLevel > 1 ? zoomLevel : Math.max(0.88, 1 - Math.abs(touchDelta.y) / 800)
       })`
     : `translate3d(0, 0, 0) scale(${zoomLevel})`;
 
   const backdropOpacity = isSwiping
-    ? Math.max(0.4, 1 - Math.abs(touchDelta.y) / 400)
+    ? Math.max(0.35, 1 - Math.abs(touchDelta.y) / 380)
     : 1;
+
+  // Slide-in animation class based on navigation direction
+  const slideAnimationClass = slideDirection === 'next'
+    ? 'animate-in fade-in slide-in-from-right-8 duration-200'
+    : 'animate-in fade-in slide-in-from-left-8 duration-200';
 
   return (
     <div
@@ -254,15 +291,15 @@ export default function MediaLightbox({
     >
       {/* 1. TOP HEADER TOOLBAR */}
       <div
-        className={`relative z-20 flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3.5 bg-gradient-to-b from-slate-950/90 via-slate-950/60 to-transparent text-white transition-all duration-300 ${
+        className={`relative z-30 flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3.5 bg-gradient-to-b from-slate-950/95 via-slate-950/70 to-transparent text-white transition-all duration-200 ${
           showControls ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'
         }`}
       >
         {/* Left: Back / Close & Counter */}
-        <div className="flex items-center gap-3 truncate pr-2">
+        <div className="flex items-center gap-2 sm:gap-3 truncate pr-2">
           <button
             onClick={onClose}
-            className="p-2 -ml-1 text-slate-300 hover:text-white hover:bg-white/10 rounded-full transition-colors active:scale-95"
+            className="p-2 -ml-1 text-slate-300 hover:text-white hover:bg-white/10 active:scale-90 rounded-full transition-all"
             title="Close (Esc)"
           >
             <X className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -276,11 +313,11 @@ export default function MediaLightbox({
             {fileType === 'document' && <File className="w-4 h-4 text-amber-400 shrink-0" />}
 
             <div className="flex flex-col truncate">
-              <span className="text-xs sm:text-sm font-semibold truncate text-slate-100 max-w-[160px] sm:max-w-md">
+              <span className="text-xs sm:text-sm font-semibold truncate text-slate-100 max-w-[140px] sm:max-w-md">
                 {currentFile.fileName}
               </span>
               {files.length > 1 && (
-                <span className="text-[11px] text-slate-400 font-mono">
+                <span className="text-[11px] text-blue-400 font-medium">
                   {currentIndex + 1} of {files.length}
                 </span>
               )}
@@ -288,15 +325,15 @@ export default function MediaLightbox({
           </div>
         </div>
 
-        {/* Right: Actions (Zoom, Download, Info, Delete, Fullscreen) */}
+        {/* Right: Actions */}
         <div className="flex items-center gap-1 sm:gap-2">
           {fileType === 'image' && (
             <button
               onClick={toggleZoom}
-              className={`p-2 rounded-xl transition-colors hidden sm:flex ${
+              className={`p-2 rounded-full transition-all active:scale-90 ${
                 zoomLevel > 1 ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-white/10'
               }`}
-              title={zoomLevel > 1 ? 'Reset Zoom' : 'Zoom In (2x)'}
+              title={zoomLevel > 1 ? 'Reset Zoom' : 'Zoom 2x'}
             >
               {zoomLevel > 1 ? <ZoomOut className="w-4 h-4" /> : <ZoomIn className="w-4 h-4" />}
             </button>
@@ -342,59 +379,89 @@ export default function MediaLightbox({
         </div>
       </div>
 
-      {/* 2. MAIN MEDIA STAGE WITH SWIPE & SLIDE GESTURES */}
+      {/* 2. MAIN MEDIA STAGE */}
       <div
         className="relative flex-1 flex items-center justify-center w-full h-full overflow-hidden touch-none"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        onClick={handleDoubleTap}
+        onClick={handleStageClick}
       >
-        {/* Desktop Previous Chevron Button */}
+        {/* Invisible Tap Zones for Fast 1-Tap Navigation on Mobile */}
+        {hasPrev && (
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              goToPrev();
+            }}
+            className="absolute left-0 top-12 bottom-12 w-[22%] sm:w-[15%] z-20 cursor-w-resize flex items-center justify-start pl-2 opacity-0 hover:opacity-100 active:opacity-100 transition-opacity"
+            title="Tap left edge for Previous"
+          >
+            <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md text-white flex items-center justify-center shadow-lg pointer-events-none">
+              <ChevronLeft className="w-5 h-5" />
+            </div>
+          </div>
+        )}
+
+        {hasNext && (
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              goToNext();
+            }}
+            className="absolute right-0 top-12 bottom-12 w-[22%] sm:w-[15%] z-20 cursor-e-resize flex items-center justify-end pr-2 opacity-0 hover:opacity-100 active:opacity-100 transition-opacity"
+            title="Tap right edge for Next"
+          >
+            <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md text-white flex items-center justify-center shadow-lg pointer-events-none">
+              <ChevronRight className="w-5 h-5" />
+            </div>
+          </div>
+        )}
+
+        {/* Floating Side Chevron Buttons (Visible on Mobile & Desktop) */}
         {hasPrev && (
           <button
             onClick={(e) => {
               e.stopPropagation();
               goToPrev();
             }}
-            className={`absolute left-3 sm:left-6 z-30 p-3 sm:p-4 rounded-full bg-slate-900/60 hover:bg-slate-900/90 text-white/80 hover:text-white backdrop-blur-md border border-white/10 shadow-2xl transition-all active:scale-90 hover:scale-105 hidden sm:flex items-center justify-center ${
+            className={`absolute left-2 sm:left-6 z-25 p-2 sm:p-3.5 rounded-full bg-slate-900/75 hover:bg-slate-900 text-white backdrop-blur-md border border-white/15 shadow-2xl transition-all active:scale-80 hover:scale-105 flex items-center justify-center ${
               showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
             }`}
-            title="Previous (Left Arrow)"
+            title="Previous (Left Arrow or Tap Left)"
           >
-            <ChevronLeft className="w-6 h-6" />
+            <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
         )}
 
-        {/* Desktop Next Chevron Button */}
         {hasNext && (
           <button
             onClick={(e) => {
               e.stopPropagation();
               goToNext();
             }}
-            className={`absolute right-3 sm:right-6 z-30 p-3 sm:p-4 rounded-full bg-slate-900/60 hover:bg-slate-900/90 text-white/80 hover:text-white backdrop-blur-md border border-white/10 shadow-2xl transition-all active:scale-90 hover:scale-105 hidden sm:flex items-center justify-center ${
+            className={`absolute right-2 sm:right-6 z-25 p-2 sm:p-3.5 rounded-full bg-slate-900/75 hover:bg-slate-900 text-white backdrop-blur-md border border-white/15 shadow-2xl transition-all active:scale-80 hover:scale-105 flex items-center justify-center ${
               showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
             }`}
-            title="Next (Right Arrow)"
+            title="Next (Right Arrow or Tap Right)"
           >
-            <ChevronRight className="w-6 h-6" />
+            <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
         )}
 
-        {/* Active Media Container with Real-time Gesture Transform */}
+        {/* Active Media Container with Gesture Transform & Slide Animation */}
         <div
           style={{
-            transform: mediaTransform,
-            transition: isSwiping ? 'none' : 'transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1)',
+            transform: dragTransform,
+            transition: isSwiping ? 'none' : 'transform 0.25s cubic-bezier(0.2, 0.9, 0.3, 1)',
           }}
-          className="relative max-w-full max-h-full flex items-center justify-center p-2 sm:p-8"
+          className={`relative max-w-full max-h-full flex items-center justify-center p-1 sm:p-8 ${slideAnimationClass}`}
         >
-          {/* Loading Indicator */}
+          {/* Buffering Indicator */}
           {!isMediaLoaded && !loadError && (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 gap-2">
               <div className="w-8 h-8 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
-              <span className="text-xs font-medium">Buffering from Telegram...</span>
+              <span className="text-xs font-medium">Loading from Telegram...</span>
             </div>
           )}
 
@@ -403,7 +470,7 @@ export default function MediaLightbox({
             <div className="flex flex-col items-center text-center p-6 bg-slate-900/80 rounded-2xl border border-slate-800 text-slate-300 max-w-sm">
               <RotateCcw className="w-8 h-8 text-amber-400 mb-2" />
               <p className="text-sm font-semibold mb-1">Failed to load media</p>
-              <p className="text-xs text-slate-500 mb-4">Connection to Telegram MTProto timed out.</p>
+              <p className="text-xs text-slate-500 mb-4">Telegram connection timed out.</p>
               <button
                 onClick={() => {
                   setLoadError(false);
@@ -416,7 +483,7 @@ export default function MediaLightbox({
             </div>
           )}
 
-          {/* 1. Photo Viewer */}
+          {/* 1. Photo Viewer (Optimized for Mobile Viewing) */}
           {fileType === 'image' && (
             <img
               key={currentFile.telegramMessageId}
@@ -428,7 +495,7 @@ export default function MediaLightbox({
                 setLoadError(true);
               }}
               draggable={false}
-              className={`max-w-full max-h-[78vh] sm:max-h-[82vh] w-auto h-auto object-contain rounded-xl sm:rounded-2xl shadow-2xl cursor-zoom-in transition-opacity duration-300 ${
+              className={`max-w-full max-h-[78vh] sm:max-h-[82vh] w-auto h-auto object-contain rounded-lg sm:rounded-2xl shadow-2xl transition-opacity duration-200 ${
                 isMediaLoaded ? 'opacity-100' : 'opacity-0'
               }`}
             />
@@ -448,7 +515,7 @@ export default function MediaLightbox({
                 setIsMediaLoaded(true);
                 setLoadError(true);
               }}
-              className="max-w-full max-h-[78vh] sm:max-h-[82vh] w-auto h-auto rounded-xl sm:rounded-2xl shadow-2xl bg-black"
+              className="max-w-full max-h-[78vh] sm:max-h-[82vh] w-auto h-auto rounded-lg sm:rounded-2xl shadow-2xl bg-black"
             />
           )}
 
@@ -476,7 +543,7 @@ export default function MediaLightbox({
 
           {/* 4. PDF Document Viewer */}
           {fileType === 'pdf' && (
-            <div className="w-[92vw] sm:w-[80vw] max-w-5xl h-[75vh] flex flex-col items-center justify-center bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow-2xl">
+            <div className="w-[94vw] sm:w-[80vw] max-w-5xl h-[75vh] flex flex-col items-center justify-center bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow-2xl">
               <iframe
                 src={streamUrl}
                 title={currentFile.fileName}
@@ -518,7 +585,7 @@ export default function MediaLightbox({
           <div>
             <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-5">
               <h3 className="font-bold text-base flex items-center gap-2">
-                <Info className="w-4 h-4 text-blue-400" /> File Info
+                <Info className="w-4 h-4 text-blue-400" /> File Details
               </h3>
               <button
                 onClick={() => setShowInfo(false)}
@@ -584,13 +651,47 @@ export default function MediaLightbox({
         </div>
       )}
 
-      {/* 4. BOTTOM THUMBNAIL FILMSTRIP SCRUBBER */}
-      {files.length > 1 && (
-        <div
-          className={`relative z-20 px-3 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-t from-slate-950/95 via-slate-950/80 to-transparent transition-all duration-300 ${
-            showControls ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full pointer-events-none'
-          }`}
-        >
+      {/* 4. MOBILE-FRIENDLY BOTTOM ACTION & NAVIGATION BAR */}
+      <div
+        className={`relative z-30 px-3 sm:px-6 py-2 sm:py-3 bg-gradient-to-t from-slate-950/95 via-slate-950/85 to-transparent transition-all duration-200 ${
+          showControls ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full pointer-events-none'
+        }`}
+      >
+        {/* Mobile Quick Thumb Switcher Buttons (< Prev | 3 / 24 | Next >) */}
+        {files.length > 1 && (
+          <div className="flex sm:hidden items-center justify-between pb-2 px-1">
+            <button
+              onClick={goToPrev}
+              disabled={!hasPrev}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold backdrop-blur-md transition-all active:scale-95 ${
+                hasPrev
+                  ? 'bg-white/15 text-white active:bg-white/30 border border-white/10'
+                  : 'bg-white/5 text-slate-600 opacity-40 cursor-not-allowed'
+              }`}
+            >
+              <ChevronLeft className="w-4 h-4" /> Previous
+            </button>
+
+            <span className="text-xs font-medium text-slate-300 font-mono">
+              {currentIndex + 1} / {files.length}
+            </span>
+
+            <button
+              onClick={goToNext}
+              disabled={!hasNext}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold backdrop-blur-md transition-all active:scale-95 ${
+                hasNext
+                  ? 'bg-blue-600 text-white active:bg-blue-700 shadow-md shadow-blue-600/30'
+                  : 'bg-white/5 text-slate-600 opacity-40 cursor-not-allowed'
+              }`}
+            >
+              Next <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Thumbnail Filmstrip Scrubber */}
+        {files.length > 1 && showFilmstrip && (
           <div
             ref={filmstripRef}
             className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 scroll-smooth max-w-4xl mx-auto"
@@ -609,10 +710,10 @@ export default function MediaLightbox({
                     setSlideDirection(idx > currentIndex ? 'next' : 'prev');
                     onSelectFile(file);
                   }}
-                  className={`relative shrink-0 w-11 h-11 sm:w-14 sm:h-14 rounded-xl overflow-hidden transition-all duration-200 border-2 ${
+                  className={`relative shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-xl overflow-hidden transition-all duration-200 border-2 ${
                     isSelected
-                      ? 'border-blue-500 scale-105 ring-2 ring-blue-500/40 opacity-100 shadow-lg'
-                      : 'border-transparent opacity-45 hover:opacity-85'
+                      ? 'border-blue-500 scale-105 ring-2 ring-blue-500/50 opacity-100 shadow-lg'
+                      : 'border-transparent opacity-40 hover:opacity-80 active:opacity-100'
                   }`}
                 >
                   {type === 'image' && (
@@ -647,8 +748,8 @@ export default function MediaLightbox({
               );
             })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

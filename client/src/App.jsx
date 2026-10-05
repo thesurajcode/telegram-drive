@@ -29,6 +29,8 @@ import {
   Eye,
   EyeOff,
   ShieldCheck,
+  LayoutGrid,
+  Columns,
 } from 'lucide-react';
 import MediaLightbox from './components/MediaLightbox';
 
@@ -168,6 +170,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all'); // 'all', 'images', 'videos', 'audio', 'documents'
+  const [gridMode, setGridMode] = useState('grid'); // 'grid' (square Google Photos tiles) vs 'columns' (masonry flow)
 
   const [isDragging, setIsDragging] = useState(false);
 
@@ -1049,27 +1052,56 @@ export default function App() {
             </button>
           </div>
 
-          {/* Search bar on mobile */}
-          <div className="relative md:hidden w-full">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search media..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500"
-            />
+          {/* Controls: Mobile Search Bar & Layout Switcher */}
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            {/* Search bar on mobile */}
+            <div className="relative flex-1 md:hidden">
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search media..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500"
+              />
+            </div>
+
+            {/* Layout Density Switcher: Google Photos Square Grid vs Masonry Flow */}
+            <div className="flex items-center bg-slate-200/80 p-0.5 rounded-xl shrink-0">
+              <button
+                onClick={() => setGridMode('grid')}
+                className={`p-1.5 rounded-lg transition-all ${
+                  gridMode === 'grid'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+                title="Square Grid view (Google Photos 3-column mobile)"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setGridMode('columns')}
+                className={`p-1.5 rounded-lg transition-all ${
+                  gridMode === 'columns'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+                title="Masonry Flow view"
+              >
+                <Columns className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Gallery Section — Google Photos Timeline Grouping */}
         {loading && files.length === 0 ? (
           // Loading Skeleton
-          <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 gap-4">
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-1.5 sm:gap-3">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
               <div
                 key={n}
-                className="mb-4 bg-slate-200/70 rounded-2xl h-52 animate-pulse break-inside-avoid"
+                className="aspect-square bg-slate-200/70 rounded-xl sm:rounded-2xl animate-pulse"
               />
             ))}
           </div>
@@ -1115,98 +1147,109 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Masonry Grid for this section */}
-                <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 gap-3 sm:gap-4 space-y-3 sm:space-y-4">
+                {/* Gallery Grid (Toggleable: Clean 3-col Square Grid vs Masonry) */}
+                <div
+                  className={
+                    gridMode === 'grid'
+                      ? 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-1.5 sm:gap-3'
+                      : 'columns-2 sm:columns-3 md:columns-4 lg:columns-5 gap-3 sm:gap-4 space-y-3 sm:space-y-4'
+                  }
+                >
                   {section.items.map((file) => {
                     const streamUrl = getStreamUrl(file.telegramMessageId);
                     const fileType = getFileType(file);
+                    const isSquare = gridMode === 'grid';
 
                     return (
                       <div
                         key={file.id || file.telegramMessageId}
                         onClick={() => setSelectedFile(file)}
-                        className="group relative break-inside-avoid rounded-2xl overflow-hidden bg-slate-900 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:-translate-y-1"
+                        className={`group relative overflow-hidden bg-slate-900 shadow-sm hover:shadow-xl transition-all duration-200 cursor-pointer transform active:scale-95 ${
+                          isSquare
+                            ? 'aspect-square rounded-xl sm:rounded-2xl'
+                            : 'break-inside-avoid rounded-2xl hover:-translate-y-1'
+                        }`}
                       >
                         {/* 1. Video Rendering */}
                         {fileType === 'video' && (
-                          <div className="relative aspect-[4/5] sm:aspect-square bg-slate-950 flex items-center justify-center overflow-hidden">
+                          <div className={`relative bg-slate-950 flex items-center justify-center overflow-hidden ${
+                            isSquare ? 'w-full h-full' : 'aspect-[4/5] sm:aspect-square'
+                          }`}>
                             <video
                               src={streamUrl}
                               preload="metadata"
                               muted
                               playsInline
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             />
                             <div className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover:bg-black/45 transition-colors">
-                              <div className="w-11 h-11 rounded-full bg-white/90 backdrop-blur-sm text-slate-900 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                                <Play className="w-5 h-5 fill-slate-900 ml-0.5" />
+                              <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/90 backdrop-blur-sm text-slate-900 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                                <Play className="w-4 h-4 sm:w-5 sm:h-5 fill-slate-900 ml-0.5" />
                               </div>
                             </div>
-                            <div className="absolute top-2.5 left-2.5 bg-black/60 backdrop-blur-md text-white text-[10px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1">
-                              <Film className="w-3 h-3" /> Video
+                            <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                              <Film className="w-3 h-3 text-purple-400" />
+                              <span className="hidden sm:inline">Video</span>
                             </div>
                           </div>
                         )}
 
                         {/* 2. Photo Rendering */}
                         {fileType === 'image' && (
-                          <div className="relative min-h-[140px] bg-slate-100 flex items-center justify-center overflow-hidden">
+                          <div className={`relative bg-slate-100 flex items-center justify-center overflow-hidden ${
+                            isSquare ? 'w-full h-full' : 'min-h-[140px]'
+                          }`}>
                             <img
                               src={streamUrl}
                               alt={file.fileName}
                               loading="lazy"
-                              className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-500"
+                              className={`w-full ${isSquare ? 'h-full object-cover' : 'h-auto object-cover'} group-hover:scale-105 transition-transform duration-300`}
                             />
                           </div>
                         )}
 
                         {/* 3. Audio / Music Rendering */}
                         {fileType === 'audio' && (
-                          <div className="relative aspect-square bg-gradient-to-tr from-emerald-950 via-slate-900 to-teal-900 p-4 flex flex-col items-center justify-center text-center">
-                            <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-3 shadow-inner group-hover:scale-110 transition-transform">
-                              <Headphones className="w-7 h-7" />
+                          <div className="relative aspect-square w-full h-full bg-gradient-to-tr from-emerald-950 via-slate-900 to-teal-900 p-2 sm:p-4 flex flex-col items-center justify-center text-center">
+                            <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-1.5 sm:mb-3 shadow-inner group-hover:scale-110 transition-transform">
+                              <Headphones className="w-5 h-5 sm:w-7 sm:h-7" />
                             </div>
-                            <p className="text-xs font-bold text-white line-clamp-2 px-2">
+                            <p className="text-[11px] sm:text-xs font-bold text-white line-clamp-2 px-1">
                               {file.fileName}
                             </p>
-                            <span className="text-[10px] text-emerald-400/80 uppercase font-mono tracking-wider mt-1">
-                              Audio Track
-                            </span>
                           </div>
                         )}
 
                         {/* 4. PDF Document Rendering */}
                         {fileType === 'pdf' && (
-                          <div className="relative aspect-[4/5] bg-gradient-to-tr from-rose-950 via-slate-900 to-red-900 p-4 flex flex-col items-center justify-center text-center">
-                            <div className="w-14 h-14 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                              <FileText className="w-7 h-7" />
+                          <div className={`relative bg-gradient-to-tr from-rose-950 via-slate-900 to-red-900 p-2 sm:p-4 flex flex-col items-center justify-center text-center ${
+                            isSquare ? 'w-full h-full' : 'aspect-[4/5]'
+                          }`}>
+                            <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mb-1.5 sm:mb-3 group-hover:scale-110 transition-transform">
+                              <FileText className="w-5 h-5 sm:w-7 sm:h-7" />
                             </div>
-                            <p className="text-xs font-bold text-white line-clamp-2 px-2">
+                            <p className="text-[11px] sm:text-xs font-bold text-white line-clamp-2 px-1">
                               {file.fileName}
                             </p>
-                            <span className="text-[10px] text-rose-400/80 uppercase font-mono tracking-wider mt-1">
-                              PDF Document
-                            </span>
                           </div>
                         )}
 
                         {/* 5. Generic Document / Archive Rendering */}
                         {fileType === 'document' && (
-                          <div className="relative aspect-[4/5] bg-gradient-to-tr from-amber-950 via-slate-900 to-amber-900 p-4 flex flex-col items-center justify-center text-center">
-                            <div className="w-14 h-14 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                              <File className="w-7 h-7" />
+                          <div className={`relative bg-gradient-to-tr from-amber-950 via-slate-900 to-amber-900 p-2 sm:p-4 flex flex-col items-center justify-center text-center ${
+                            isSquare ? 'w-full h-full' : 'aspect-[4/5]'
+                          }`}>
+                            <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center mb-1.5 sm:mb-3 group-hover:scale-110 transition-transform">
+                              <File className="w-5 h-5 sm:w-7 sm:h-7" />
                             </div>
-                            <p className="text-xs font-bold text-white line-clamp-2 px-2">
+                            <p className="text-[11px] sm:text-xs font-bold text-white line-clamp-2 px-1">
                               {file.fileName}
                             </p>
-                            <span className="text-[10px] text-amber-400/80 uppercase font-mono tracking-wider mt-1">
-                              Document
-                            </span>
                           </div>
                         )}
 
-                        {/* Hover Overlay with Metadata & Quick Actions */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-3 flex flex-col justify-between">
+                        {/* Hover Overlay with Metadata & Quick Actions (Desktop only) */}
+                        <div className="hidden sm:flex absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-3 flex-col justify-between">
                           {/* Top Actions */}
                           <div className="flex items-center justify-end gap-1.5 self-end">
                             <button
