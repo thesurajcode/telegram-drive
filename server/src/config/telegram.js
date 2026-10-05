@@ -18,13 +18,21 @@ function exportSessionString(client) {
 
   const sessionString = client.session.save();
 
-  console.log('\n================================================================');
-  console.log('📌 TELEGRAM SESSION STRING EXPORTED:');
-  console.log('----------------------------------------------------------------');
-  console.log(sessionString);
-  console.log('----------------------------------------------------------------');
-  console.log('Save this string into your server/.env as TELEGRAM_SESSION_STRING');
-  console.log('================================================================\n');
+  const maskedString = sessionString.length > 20
+    ? `${sessionString.slice(0, 10)}...[SECURELY MASKED]...${sessionString.slice(-6)}`
+    : '[MASKED]';
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('\n================================================================');
+    console.log('📌 TELEGRAM SESSION STRING INITIALIZED');
+    console.log('----------------------------------------------------------------');
+    console.log(`Preview: ${maskedString}`);
+    console.log('----------------------------------------------------------------');
+    console.log('Automatically persisted into your server/.env as TELEGRAM_SESSION_STRING');
+    console.log('================================================================\n');
+  } else {
+    console.log('✅ Telegram session initialized and persisted.');
+  }
 
   // Attempt to automatically save into .env if empty
   try {

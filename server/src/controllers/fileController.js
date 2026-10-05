@@ -279,7 +279,7 @@ async function listFiles(req, res) {
 async function streamFile(req, res) {
   const messageId = parseInt(req.params.messageId, 10);
 
-  if (isNaN(messageId)) {
+  if (isNaN(messageId) || messageId <= 0) {
     return res.status(400).json({ error: 'Invalid telegramMessageId parameter.' });
   }
 
@@ -300,18 +300,51 @@ async function streamFile(req, res) {
     }
 
     const message = messages[0];
-    const mimeType = fileMeta ? fileMeta.mimeType : 'application/octet-stream';
+    const rawMime = fileMeta ? fileMeta.mimeType : 'application/octet-stream';
     const fileSize = fileMeta ? Number(fileMeta.size) : null;
     const fileName = fileMeta ? fileMeta.fileName : `telegram_media_${messageId}`;
 
-    // Set streaming headers for in-browser rendering and caching
-    res.setHeader('Content-Type', mimeType);
+    // Security: Only allow safe image, video, audio, and PDF MIME types to render inline.
+    // Dangerous types (HTML, SVG, Javascript, executables) MUST be forced as downloads (attachment)
+    // with strict Content-Security-Policy sandbox to prevent Stored XSS attacks.
+    const SAFE_INLINE_MIMES = [
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'image/gif',
+      'image/avif',
+      'image/bmp',
+      'video/mp4',
+      'video/webm',
+      'video/ogg',
+      'video/quicktime',
+      'audio/mpeg',
+      'audio/ogg',
+      'audio/wav',
+      'audio/aac',
+      'audio/flac',
+      'audio/mp4',
+      'audio/webm',
+      'application/pdf',
+    ];
+
+    const isExplicitDownload = req.query.download === '1' || req.query.download === 'true';
+    const isSafeInline = SAFE_INLINE_MIMES.includes(rawMime.toLowerCase()) && !isExplicitDownload;
+    const dispositionType = isSafeInline ? 'inline' : 'attachment';
+
+    res.setHeader('Content-Type', rawMime);
     if (fileSize) {
       res.setHeader('Content-Length', fileSize);
     }
     res.setHeader('Accept-Ranges', 'bytes');
-    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(fileName)}"`);
+    res.setHeader('Content-Disposition', `${dispositionType}; filename="${encodeURIComponent(fileName)}"`);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+
+    // Strict sandboxing if non-whitelisted file type is requested
+    if (!isSafeInline) {
+      res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+    }
 
     let isClientDisconnected = false;
     req.on('close', () => {
@@ -352,7 +385,7 @@ async function streamFile(req, res) {
 async function deleteFile(req, res) {
   const messageId = parseInt(req.params.messageId, 10);
 
-  if (isNaN(messageId)) {
+  if (isNaN(messageId) || messageId <= 0) {
     return res.status(400).json({ error: 'Invalid telegramMessageId parameter.' });
   }
 

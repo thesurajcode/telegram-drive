@@ -9,16 +9,23 @@ const {
   deleteFile,
   getUploadProgress,
 } = require('../controllers/fileController');
-const { login, verify } = require('../controllers/authController');
+const {
+  login,
+  verify,
+  requestPasswordResetOtp,
+  resetPassword,
+  changePassword,
+} = require('../controllers/authController');
 const { authMiddleware } = require('../middleware/auth');
+const { authLimiter, otpLimiter, uploadLimiter } = require('../middleware/rateLimiter');
 
 const router = express.Router();
 
 /**
  * Route: POST /api/auth/login
- * Validates password and issues session token
+ * Validates master password with brute-force protection and issues session token
  */
-router.post('/auth/login', login);
+router.post('/auth/login', authLimiter, login);
 
 /**
  * Route: GET /api/auth/verify
@@ -26,6 +33,23 @@ router.post('/auth/login', login);
  */
 router.get('/auth/verify', authMiddleware, verify);
 
+/**
+ * Route: POST /api/auth/request-otp
+ * Dispatches 6-digit OTP strictly to surajchandan09@gmail.com
+ */
+router.post('/auth/request-otp', otpLimiter, requestPasswordResetOtp);
+
+/**
+ * Route: POST /api/auth/reset-password
+ * Resets vault password using Email OTP or Master Admin Password
+ */
+router.post('/auth/reset-password', authLimiter, resetPassword);
+
+/**
+ * Route: POST /api/auth/change-password
+ * Allows authenticated user to update vault password
+ */
+router.post('/auth/change-password', authMiddleware, changePassword);
 
 // Ensure temporary uploads directory exists
 const uploadsDir = path.resolve(__dirname, '../../uploads');
@@ -58,9 +82,11 @@ const upload = multer({
 /**
  * Route: POST /api/upload
  * Accepts multipart/form-data with field name 'file'
+ * Protected by authMiddleware and uploadLimiter
  */
 router.post(
   '/upload',
+  uploadLimiter,
   authMiddleware,
   (req, res, next) => {
     upload.single('file')(req, res, (err) => {
@@ -102,4 +128,3 @@ router.get('/stream/:messageId', authMiddleware, streamFile);
 router.delete('/files/:messageId', authMiddleware, deleteFile);
 
 module.exports = router;
-

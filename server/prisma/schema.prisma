@@ -23,3 +23,22 @@ model File {
   @@index([createdAt])
   @@map("files")
 }
+
+model VaultAuth {
+  id           String   @id @default("default")
+  passwordHash String
+  salt         String
+  updatedAt    DateTime @updatedAt
+
+  @@map("vault_auth")
+}
+
+model PasswordResetOtp {
+  id        String   @id @default(uuid())
+  otpHash   String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+  @@map("password_reset_otps")
+}

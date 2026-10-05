@@ -37,7 +37,7 @@ import {
   Sun,
 } from 'lucide-react';
 import MediaLightbox from './components/MediaLightbox';
-
+import PasswordManagerModal from './components/PasswordManagerModal';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
@@ -198,6 +198,8 @@ export default function App() {
   const [rememberDevice, setRememberDevice] = useState(true);
   const [authError, setAuthError] = useState('');
   const [isUnlocking, setIsUnlocking] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordModalMode, setPasswordModalMode] = useState('reset'); // 'reset' | 'change'
 
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -372,6 +374,25 @@ export default function App() {
       setAuthError(err.response?.data?.error || 'Incorrect password. Access denied.');
     } finally {
       setIsUnlocking(false);
+    }
+  };
+
+  /**
+   * Callback when password is reset or updated via modal
+   */
+  const handlePasswordSuccess = (message, token) => {
+    if (token) {
+      if (rememberDevice) {
+        localStorage.setItem(AUTH_TOKEN_KEY, token);
+      } else {
+        sessionStorage.setItem(AUTH_TOKEN_KEY, token);
+      }
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setAuthToken(token);
+      setIsAuthenticated(true);
+      showToast(message || 'Vault unlocked with new password!', 'success');
+    } else {
+      showToast(message || 'Vault password successfully changed!', 'success');
     }
   };
 
@@ -834,12 +855,38 @@ export default function App() {
             </button>
           </form>
 
+          {/* Prominent Forgot / Reset Password Trigger */}
+          <div className="w-full mt-5 pt-5 border-t border-slate-800/90 flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setPasswordModalMode('reset');
+                setShowPasswordModal(true);
+                setAuthError('');
+              }}
+              className="w-full py-2.5 px-4 bg-slate-800/90 hover:bg-slate-800 hover:border-blue-500/70 border border-slate-700/80 text-blue-400 hover:text-white text-xs font-bold rounded-2xl flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.98] group"
+            >
+              <Key className="w-4 h-4 text-amber-400 group-hover:rotate-12 transition-transform shrink-0" />
+              <span>Forgot Password? Reset with OTP / Master Key</span>
+            </button>
+          </div>
+
           {/* Security footnote */}
-          <div className="mt-8 pt-6 border-t border-slate-800/80 w-full flex items-center justify-center gap-2 text-[11px] text-slate-500">
+          <div className="mt-4 pt-2 w-full flex items-center justify-center gap-2 text-[11px] text-slate-500">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
             <span>Encrypted Telegram MTProto Storage • Personal Vault</span>
           </div>
         </div>
+
+        {/* Password Manager Modal */}
+        <PasswordManagerModal
+          isOpen={showPasswordModal}
+          onClose={() => setShowPasswordModal(false)}
+          mode={passwordModalMode}
+          apiBaseUrl={API_BASE_URL}
+          onSuccess={handlePasswordSuccess}
+          showToast={showToast}
+        />
 
         {/* Toast Notification on Lock Screen */}
         {toast && (
@@ -999,6 +1046,19 @@ export default function App() {
           >
             <Upload className="w-4 h-4" />
             <span className="hidden sm:inline">Upload</span>
+          </button>
+
+          {/* Change Vault Password Button - Clearly Visible */}
+          <button
+            onClick={() => {
+              setPasswordModalMode('change');
+              setShowPasswordModal(true);
+            }}
+            title="Change Vault Password & Revoke Other Devices"
+            className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/80 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 rounded-full transition-all active:scale-95 shadow-xs"
+          >
+            <Key className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+            <span>Change Password</span>
           </button>
 
           {/* Lock Vault Button */}
@@ -1653,6 +1713,16 @@ export default function App() {
           downloadSpeed={downloadSpeed}
         />
       )}
+
+      {/* Password Manager Modal */}
+      <PasswordManagerModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        mode={passwordModalMode}
+        apiBaseUrl={API_BASE_URL}
+        onSuccess={handlePasswordSuccess}
+        showToast={showToast}
+      />
     </div>
   );
 }

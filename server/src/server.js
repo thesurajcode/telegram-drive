@@ -1,26 +1,76 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const path = require('path');
+const fs = require('fs');
 const prisma = require('./config/prisma');
 const fileRoutes = require('./routes/fileRoutes');
+const { apiLimiter } = require('./middleware/rateLimiter');
 const { initTelegramClient } = require('./config/telegram');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// CORS configuration allowing all origins, methods, and headers
-app.use(cors());
-app.options('*', cors());
+// Trust first proxy when running behind reverse proxy (Render, Docker, Nginx, Cloudflare)
+// Required for accurate client IP resolution in express-rate-limit
+app.set('trust proxy', 1);
 
+// 1. HTTP Security Headers with Helmet
+app.use(
+  helmet({
+    contentSecurityPolicy: false, // Handled per streaming route to allow media playback
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allows <img> and <video> tags to render streams
+  })
+);
 
-// Express body parsers
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// 2. Strict CORS Configuration
+const rawClientUrls = process.env.CLIENT_URL || 'http://localhost:5173';
+const allowedOrigins = rawClientUrls
+  .split(',')
+  .map((url) => url.trim().replace(/\/$/, ''))
+  .filter(Boolean);
 
-// API Routes
-app.use('/api', fileRoutes);
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow non-browser requests (e.g. server health checks, curl, Telegram webhooks)
+    if (!origin) {
+      return callback(null, true);
+    }
 
-// Health check endpoint verifying both PostgreSQL (Prisma) and Telegram status
+    const normalizedOrigin = origin.replace(/\/$/, '');
+
+    // Check exact match in configured allowed origins
+    if (allowedOrigins.includes(normalizedOrigin)) {
+      return callback(null, true);
+    }
+
+    // In local development, automatically allow localhost and 127.0.0.1 on any port
+    if (process.env.NODE_ENV !== 'production') {
+      if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(normalizedOrigin)) {
+        return callback(null, true);
+      }
+    }
+
+    return callback(new Error(`Origin ${origin} is blocked by CORS policy.`));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-access-token', 'x-upload-id'],
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+
+// 3. Express body parsers with payload size limits to mitigate JSON bomb DoS
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// 4. API Rate Limiting & Routes
+app.use('/api', apiLimiter, fileRoutes);
+
+// 5. Health check endpoint verifying both PostgreSQL (Prisma) and Telegram status
 app.get('/health', async (req, res) => {
   let dbStatus = 'disconnected';
   try {
@@ -39,15 +89,41 @@ app.get('/health', async (req, res) => {
 
 // Centralized error handling middleware
 app.use((err, req, res, next) => {
-  console.error('Unhandled Server Error:', err);
-  res.status(err.status || 500).json({
+  console.error('Unhandled Server Error:', err.message || err);
+  const status = err.status || (err.message && err.message.includes('CORS') ? 403 : 500);
+  res.status(status).json({
     error: err.message || 'Internal Server Error',
   });
 });
 
 /**
+ * Sweeps the temporary uploads directory and deletes abandoned or crashed uploads older than maxAgeMs
+ */
+const UPLOADS_DIR = path.resolve(__dirname, '../uploads');
+function cleanOrphanedUploads(maxAgeMs = 2 * 60 * 60 * 1000) {
+  try {
+    if (!fs.existsSync(UPLOADS_DIR)) return;
+    const now = Date.now();
+    const files = fs.readdirSync(UPLOADS_DIR);
+    for (const file of files) {
+      if (file === '.gitkeep') continue;
+      const fullPath = path.join(UPLOADS_DIR, file);
+      try {
+        const stats = fs.statSync(fullPath);
+        if (now - stats.mtimeMs > maxAgeMs) {
+          fs.unlinkSync(fullPath);
+          console.log(`🧹 Cleaned up orphaned temp file: ${file}`);
+        }
+      } catch (e) {}
+    }
+  } catch (err) {
+    console.warn('⚠️ Error during temp uploads cleanup:', err.message);
+  }
+}
+
+/**
  * Boots the server: tests Prisma PostgreSQL connection, starts GramJS MTProto client,
- * and starts listening for incoming HTTP requests.
+ * runs temporary storage cleanup, and starts listening for incoming HTTP requests.
  */
 async function startServer() {
   try {
@@ -55,6 +131,11 @@ async function startServer() {
     console.log('📦 Connecting to PostgreSQL via Prisma...');
     await prisma.$connect();
     console.log('✅ PostgreSQL database connected successfully.');
+
+    // Clean any leftover upload files from previous runs
+    cleanOrphanedUploads();
+    // Schedule periodic cleanup every 1 hour
+    setInterval(() => cleanOrphanedUploads(), 60 * 60 * 1000);
 
     // 2. Start Express HTTP Server FIRST so hosting providers (e.g. Render) detect the open port immediately
     const server = app.listen(PORT, '0.0.0.0', () => {
