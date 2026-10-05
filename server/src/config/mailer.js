@@ -1,8 +1,10 @@
 const nodemailer = require('nodemailer');
 
+// Locked owner email destination for all OTPs
+const OWNER_EMAIL = (process.env.ADMIN_EMAIL || 'surajchandan09@gmail.com').trim();
+
 /**
- * Configure SMTP transporter using environment variables.
- * Compatible with Gmail (using App Passwords), Brevo, Resend, Mailgun, or any standard SMTP.
+ * Configure SMTP transporter using environment variables (fallback when HTTP APIs not used)
  */
 function createTransporter() {
   const host = process.env.SMTP_HOST;
@@ -10,10 +12,9 @@ function createTransporter() {
   const pass = (process.env.SMTP_PASS || '').replace(/\s+/g, '').trim();
 
   if (!user || !pass) {
-    return null; // Not configured yet
+    return null;
   }
 
-  // If a custom non-Gmail SMTP host is specified
   if (host && host !== 'smtp.gmail.com') {
     const port = parseInt(process.env.SMTP_PORT || '587', 10);
     const secure = process.env.SMTP_SECURE === 'true' || port === 465;
@@ -22,39 +23,99 @@ function createTransporter() {
       port,
       secure,
       auth: { user, pass },
-      connectionTimeout: 7000,
-      greetingTimeout: 7000,
-      socketTimeout: 10000,
+      connectionTimeout: 6000,
+      greetingTimeout: 6000,
+      socketTimeout: 8000,
     });
   }
 
-  // Default: Use official 'gmail' service with strict timeouts to prevent hanging on cloud hosts
   return nodemailer.createTransport({
     service: 'gmail',
-    auth: {
-      user,
-      pass,
-    },
-    connectionTimeout: 7000,
-    greetingTimeout: 7000,
-    socketTimeout: 10000,
+    auth: { user, pass },
+    connectionTimeout: 6000,
+    greetingTimeout: 6000,
+    socketTimeout: 8000,
   });
 }
 
-// Locked owner email destination for all OTPs
-const OWNER_EMAIL = (process.env.ADMIN_EMAIL || 'surajchandan09@gmail.com').trim();
+/**
+ * Sends email via Resend HTTP REST API (Port 443 - HTTPS).
+ * Bypasses all cloud firewall/SMTP blocks (e.g. Render, AWS, Heroku).
+ * Free tier gives 3,000 emails/month forever with zero credit card.
+ */
+async function sendViaResend(apiKey, to, subject, html, text) {
+  const fromAddress = (process.env.RESEND_FROM || 'TelePhotos Vault <onboarding@resend.dev>').trim();
+  
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey.trim()}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: fromAddress,
+      to: [to],
+      subject,
+      html,
+      text,
+    }),
+    signal: AbortSignal.timeout(8000),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || `Resend API returned HTTP ${response.status}`);
+  }
+
+  return data;
+}
+
+/**
+ * Sends email via Brevo (Sendinblue) HTTP API (Port 443 - HTTPS).
+ * Free tier gives 300 emails/day forever.
+ */
+async function sendViaBrevo(apiKey, to, subject, html, text) {
+  const senderEmail = (process.env.BREVO_SENDER || OWNER_EMAIL).trim();
+
+  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'api-key': apiKey.trim(),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      sender: { name: 'Telegram Drive Vault', email: senderEmail },
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+      textContent: text,
+    }),
+    signal: AbortSignal.timeout(8000),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || `Brevo API returned HTTP ${response.status}`);
+  }
+
+  return data;
+}
 
 /**
  * Sends a 6-digit OTP code strictly to the owner's authorized email (surajchandan09@gmail.com).
- * If SMTP credentials are not yet configured or blocked by cloud firewall, falls back to logging the OTP in the console.
+ * Priority cascade:
+ *  1. Resend API (HTTPS Port 443 - 100% reliable on Render)
+ *  2. Brevo API  (HTTPS Port 443 - 100% reliable on Render)
+ *  3. Nodemailer SMTP (standard Gmail/SMTP)
+ *  4. Console Logging (emergency zero-lockout fallback)
+ *
  * @param {string} otp 
- * @returns {Promise<{ sent: boolean, fallback: boolean, targetEmail: string, error?: string }>}
+ * @returns {Promise<{ sent: boolean, fallback: boolean, provider: string, targetEmail: string, error?: string }>}
  */
 async function sendOtpEmail(otp) {
   const targetEmail = OWNER_EMAIL;
-  const transporter = createTransporter();
 
-  // Always log OTP to server console for high-availability backup
+  // Always log OTP to server console / Render logs for zero-lockout guarantee
   console.log('\n================================================================');
   console.log('🔐 [TELEGRAM DRIVE] PASSWORD RESET OTP GENERATED');
   console.log('----------------------------------------------------------------');
@@ -63,11 +124,8 @@ async function sendOtpEmail(otp) {
   console.log('Expires in: 10 minutes');
   console.log('----------------------------------------------------------------');
 
-  if (!transporter) {
-    console.log('Notice: SMTP credentials not set in environment. Use Master Admin Key or the OTP above.');
-    console.log('================================================================\n');
-    return { sent: false, fallback: true, targetEmail, reason: 'unconfigured' };
-  }
+  const subject = `[Telegram Drive] Password Reset Code: ${otp}`;
+  const textContent = `Your Telegram Drive verification code is: ${otp}. It expires in 10 minutes. If you did not request this, you can safely ignore this email.`;
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -117,27 +175,65 @@ async function sendOtpEmail(otp) {
     </html>
   `;
 
-  try {
-    const userEmail = process.env.SMTP_USER || 'noreply@telegram-drive.cloud';
-    await transporter.sendMail({
-      from: `"Telegram Drive Vault" <${userEmail}>`,
-      to: targetEmail,
-      subject: `[Telegram Drive] Password Reset Code: ${otp}`,
-      text: `Your Telegram Drive verification code is: ${otp}. It expires in 10 minutes.`,
-      html: htmlContent,
-    });
-    console.log('✅ Real verification email delivered successfully to:', targetEmail);
-    console.log('================================================================\n');
-    return { sent: true, fallback: false, targetEmail };
-  } catch (err) {
-    console.warn('⚠️ SMTP outbound email delivery notice:', err.message);
-    console.log('💡 Backup: OTP [ ' + otp + ' ] is recorded in active memory & database.');
-    console.log('================================================================\n');
-    return { sent: false, fallback: true, targetEmail, error: err.message };
+  // 1. Try Resend HTTP API (Recommended: Port 443 HTTPS - never blocked by cloud firewalls)
+  const resendApiKey = (process.env.RESEND_API_KEY || '').trim();
+  if (resendApiKey) {
+    try {
+      const resData = await sendViaResend(resendApiKey, targetEmail, subject, htmlContent, textContent);
+      console.log(`✅ [Resend API] Verification email delivered to ${targetEmail} (ID: ${resData.id || 'ok'})`);
+      console.log('================================================================\n');
+      return { sent: true, fallback: false, provider: 'resend', targetEmail };
+    } catch (err) {
+      console.warn('⚠️ [Resend API] Delivery issue:', err.message);
+    }
   }
+
+  // 2. Try Brevo HTTP API (Port 443 HTTPS)
+  const brevoApiKey = (process.env.BREVO_API_KEY || '').trim();
+  if (brevoApiKey) {
+    try {
+      const resData = await sendViaBrevo(brevoApiKey, targetEmail, subject, htmlContent, textContent);
+      console.log(`✅ [Brevo API] Verification email delivered to ${targetEmail} (ID: ${resData.messageId || 'ok'})`);
+      console.log('================================================================\n');
+      return { sent: true, fallback: false, provider: 'brevo', targetEmail };
+    } catch (err) {
+      console.warn('⚠️ [Brevo API] Delivery issue:', err.message);
+    }
+  }
+
+  // 3. Try standard SMTP Transporter
+  const transporter = createTransporter();
+  if (transporter) {
+    try {
+      const userEmail = process.env.SMTP_USER || 'noreply@telegram-drive.cloud';
+      await transporter.sendMail({
+        from: `"Telegram Drive Vault" <${userEmail}>`,
+        to: targetEmail,
+        subject,
+        text: textContent,
+        html: htmlContent,
+      });
+      console.log('✅ [SMTP] Verification email delivered to:', targetEmail);
+      console.log('================================================================\n');
+      return { sent: true, fallback: false, provider: 'smtp', targetEmail };
+    } catch (err) {
+      console.warn('⚠️ [SMTP] Outbound email delivery blocked or failed:', err.message);
+      if (err.message.includes('ETIMEDOUT') || err.message.includes('ECONNREFUSED')) {
+        console.warn('💡 Tip: Cloud hosts like Render block outbound SMTP ports (465/587). Add RESEND_API_KEY to bypass this completely!');
+      }
+    }
+  } else {
+    console.log('Notice: Neither RESEND_API_KEY nor SMTP credentials configured.');
+  }
+
+  // 4. Safe Console Backup
+  console.log('💡 Master Admin Key or the OTP logged above can be used to reset immediately.');
+  console.log('================================================================\n');
+  return { sent: false, fallback: true, provider: 'console', targetEmail };
 }
 
 module.exports = {
   OWNER_EMAIL,
   sendOtpEmail,
 };
+
