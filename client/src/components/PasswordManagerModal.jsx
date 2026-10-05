@@ -93,13 +93,14 @@ export default function PasswordManagerModal({
           setTargetEmail(res.data.targetEmail);
         }
         setSuccessNotice(
-          `OTP code dispatched! Check your Gmail inbox at ${res.data.targetEmail || 'surajchandan09@gmail.com'}.`
+          res.data.message || `OTP code dispatched! Check your Gmail inbox at ${res.data.targetEmail || 'surajchandan09@gmail.com'}.`
         );
-        showToast('OTP code dispatched to your Gmail!', 'success');
+        showToast(res.data.isSimulated ? 'OTP code generated!' : 'OTP dispatched to your Gmail!', 'success');
       }
     } catch (err) {
       console.error('OTP request error:', err);
-      setErrorMsg(err.response?.data?.error || 'Failed to send OTP. Please try again shortly.');
+      const serverErr = err.response?.data?.error || err.response?.data?.details;
+      setErrorMsg(serverErr || 'Failed to dispatch email. Click the "Master Admin Key" tab above to reset instantly without email.');
     } finally {
       setIsSendingOtp(false);
     }
@@ -326,6 +327,20 @@ export default function PasswordManagerModal({
                       </>
                     )}
                   </button>
+                  <p className="text-[11px] text-slate-400 text-center mt-0.5">
+                    Need instant access? Switch to the{' '}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('master');
+                        setErrorMsg('');
+                      }}
+                      className="text-amber-400 hover:text-amber-300 underline font-semibold transition-colors"
+                    >
+                      Master Admin Key
+                    </button>{' '}
+                    tab above.
+                  </p>
                 </div>
 
                 {/* 6-Digit Code Input */}

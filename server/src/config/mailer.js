@@ -5,9 +5,7 @@ const nodemailer = require('nodemailer');
  * Compatible with Gmail (using App Passwords), Brevo, Resend, Mailgun, or any standard SMTP.
  */
 function createTransporter() {
-  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
-  const port = parseInt(process.env.SMTP_PORT || '465', 10);
-  const secure = process.env.SMTP_SECURE === 'true' || port === 465;
+  const host = process.env.SMTP_HOST;
   const user = (process.env.SMTP_USER || '').trim();
   const pass = (process.env.SMTP_PASS || '').replace(/\s+/g, '').trim();
 
@@ -15,14 +13,31 @@ function createTransporter() {
     return null; // Not configured yet
   }
 
+  // If a custom non-Gmail SMTP host is specified
+  if (host && host !== 'smtp.gmail.com') {
+    const port = parseInt(process.env.SMTP_PORT || '587', 10);
+    const secure = process.env.SMTP_SECURE === 'true' || port === 465;
+    return nodemailer.createTransport({
+      host,
+      port,
+      secure,
+      auth: { user, pass },
+      connectionTimeout: 7000,
+      greetingTimeout: 7000,
+      socketTimeout: 10000,
+    });
+  }
+
+  // Default: Use official 'gmail' service with strict timeouts to prevent hanging on cloud hosts
   return nodemailer.createTransport({
-    host,
-    port,
-    secure,
+    service: 'gmail',
     auth: {
       user,
       pass,
     },
+    connectionTimeout: 7000,
+    greetingTimeout: 7000,
+    socketTimeout: 10000,
   });
 }
 
@@ -31,27 +46,27 @@ const OWNER_EMAIL = (process.env.ADMIN_EMAIL || 'surajchandan09@gmail.com').trim
 
 /**
  * Sends a 6-digit OTP code strictly to the owner's authorized email (surajchandan09@gmail.com).
- * If SMTP credentials are not yet configured in .env, falls back to logging the OTP in the console.
+ * If SMTP credentials are not yet configured or blocked by cloud firewall, falls back to logging the OTP in the console.
  * @param {string} otp 
- * @returns {Promise<{ sent: boolean, fallback: boolean, targetEmail: string }>}
+ * @returns {Promise<{ sent: boolean, fallback: boolean, targetEmail: string, error?: string }>}
  */
 async function sendOtpEmail(otp) {
   const targetEmail = OWNER_EMAIL;
   const transporter = createTransporter();
 
-  // If SMTP is not configured, provide immediate console fallback for local/dev use
-  if (!transporter) {
-    console.log('\n================================================================');
-    console.log('🔐 [TELEGRAM DRIVE] PASSWORD RESET OTP GENERATED');
-    console.log('----------------------------------------------------------------');
-    console.log(`Locked Owner Email: ${targetEmail}`);
-    console.log(`One-Time Password (OTP): [ ${otp} ]`);
-    console.log('Expires in: 10 minutes');
-    console.log('----------------------------------------------------------------');
-    console.log('Note: To deliver real emails, add SMTP_USER and SMTP_PASS to server/.env');
-    console.log('================================================================\n');
+  // Always log OTP to server console for high-availability backup
+  console.log('\n================================================================');
+  console.log('🔐 [TELEGRAM DRIVE] PASSWORD RESET OTP GENERATED');
+  console.log('----------------------------------------------------------------');
+  console.log(`Locked Owner Email: ${targetEmail}`);
+  console.log(`One-Time Password (OTP): [ ${otp} ]`);
+  console.log('Expires in: 10 minutes');
+  console.log('----------------------------------------------------------------');
 
-    return { sent: true, fallback: true, targetEmail };
+  if (!transporter) {
+    console.log('Notice: SMTP credentials not set in environment. Use Master Admin Key or the OTP above.');
+    console.log('================================================================\n');
+    return { sent: false, fallback: true, targetEmail, reason: 'unconfigured' };
   }
 
   const htmlContent = `
@@ -102,15 +117,24 @@ async function sendOtpEmail(otp) {
     </html>
   `;
 
-  await transporter.sendMail({
-    from: `"Telegram Drive Vault" <${process.env.SMTP_USER}>`,
-    to: targetEmail,
-    subject: `[Telegram Drive] Password Reset Code: ${otp}`,
-    text: `Your Telegram Drive verification code is: ${otp}. It expires in 10 minutes.`,
-    html: htmlContent,
-  });
-
-  return { sent: true, fallback: false, targetEmail };
+  try {
+    const userEmail = process.env.SMTP_USER || 'noreply@telegram-drive.cloud';
+    await transporter.sendMail({
+      from: `"Telegram Drive Vault" <${userEmail}>`,
+      to: targetEmail,
+      subject: `[Telegram Drive] Password Reset Code: ${otp}`,
+      text: `Your Telegram Drive verification code is: ${otp}. It expires in 10 minutes.`,
+      html: htmlContent,
+    });
+    console.log('✅ Real verification email delivered successfully to:', targetEmail);
+    console.log('================================================================\n');
+    return { sent: true, fallback: false, targetEmail };
+  } catch (err) {
+    console.warn('⚠️ SMTP outbound email delivery notice:', err.message);
+    console.log('💡 Backup: OTP [ ' + otp + ' ] is recorded in active memory & database.');
+    console.log('================================================================\n');
+    return { sent: false, fallback: true, targetEmail, error: err.message };
+  }
 }
 
 module.exports = {

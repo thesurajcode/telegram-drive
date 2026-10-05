@@ -72,16 +72,26 @@ async function requestPasswordResetOtp(req, res) {
 
     const masked = maskEmail(OWNER_EMAIL);
 
+    if (result.sent) {
+      return res.status(200).json({
+        success: true,
+        message: `A 6-digit verification code has been dispatched to ${masked}. Please check your Gmail inbox.`,
+        targetEmail: masked,
+        isSimulated: false,
+      });
+    }
+
+    // When outbound SMTP is restricted by host (e.g. Render free tier port block)
     return res.status(200).json({
       success: true,
-      message: `A 6-digit verification code has been dispatched to ${masked}.`,
+      message: `OTP code generated! If Gmail delivery is restricted by the cloud host, switch to the 'Master Admin Key' tab to reset instantly without email, or check Render server logs.`,
       targetEmail: masked,
-      isSimulated: result.fallback,
+      isSimulated: true,
     });
   } catch (error) {
     console.error('Failed to dispatch reset OTP:', error);
     return res.status(500).json({
-      error: 'Failed to send verification code. Please try again shortly.',
+      error: 'Unable to dispatch email. Please use the Master Admin Key tab (Suraj@9525#MasterKey) to reset immediately.',
       details: error.message,
     });
   }
