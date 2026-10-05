@@ -35,6 +35,10 @@ import {
   ChevronUp,
   Moon,
   Sun,
+  Settings,
+  ChevronDown,
+  Shield,
+  Layers,
 } from 'lucide-react';
 import MediaLightbox from './components/MediaLightbox';
 import PasswordManagerModal from './components/PasswordManagerModal';
@@ -208,6 +212,25 @@ export default function App() {
   const [gridMode, setGridMode] = useState('grid'); // 'grid' (square Google Photos tiles) vs 'columns' (masonry flow)
   const [sortBy, setSortBy] = useState('newest'); // 'newest' | 'oldest' | 'largest' | 'smallest' | 'name'
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [showVaultMenu, setShowVaultMenu] = useState(false);
+  const vaultMenuRef = useRef(null);
+
+  // Close vault menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (vaultMenuRef.current && !vaultMenuRef.current.contains(e.target)) {
+        setShowVaultMenu(false);
+      }
+    };
+    if (showVaultMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [showVaultMenu]);
 
   // Night Mode state with localStorage persistence & system preference fallback
   const THEME_KEY = 'telephotos_theme';
@@ -965,15 +988,15 @@ export default function App() {
         </div>
       )}
 
-      {/* Top Navbar: Modern Frosted Glass Aesthetic with Theme Toggle & Storage Pill */}
-      <header className="sticky top-0 z-30 bg-white/80 dark:bg-[#080c14]/85 backdrop-blur-2xl border-b border-slate-200/80 dark:border-slate-850 px-3.5 sm:px-8 py-2.5 sm:py-3.5 flex items-center justify-between gap-3 shadow-xs transition-colors duration-200">
+      {/* Top Navbar: Modern Frosted Glass Aesthetic with Theme Toggle & Vault Menu */}
+      <header className="sticky top-0 z-30 bg-white/85 dark:bg-[#080c14]/90 backdrop-blur-2xl border-b border-slate-200/80 dark:border-slate-800/80 px-3.5 sm:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-3 shadow-xs transition-colors duration-200">
         {/* Logo, Identity & Small Area Storage Used Indicator */}
-        <div className="flex items-center gap-3 sm:gap-3.5">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-400 flex items-center justify-center text-white shadow-md shadow-blue-500/25 ring-2 ring-blue-500/20 shrink-0">
-            <HardDrive className="w-5 h-5" />
+        <div className="flex items-center gap-2.5 sm:gap-3.5">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-400 flex items-center justify-center text-white shadow-md shadow-blue-500/25 ring-2 ring-blue-500/20 shrink-0">
+            <HardDrive className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2 sm:gap-2.5">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <h1 className="text-base sm:text-lg font-black tracking-tight bg-gradient-to-r from-slate-900 dark:from-white via-slate-800 dark:via-slate-100 to-slate-900 dark:to-white bg-clip-text text-transparent">
                 TelePhotos
               </h1>
@@ -984,16 +1007,13 @@ export default function App() {
                 MTProto Cloud
               </span>
 
-              {/* SMALL AREA: Compact Total Storage Indicator */}
+              {/* Storage Indicator */}
               <span
                 className="flex items-center gap-1.5 px-2.5 py-0.5 text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80 rounded-full shadow-2xs"
                 title={`Total Cloud Storage Used: ${formatBytes(stats.totalBytes)} across ${stats.totalCount} files`}
               >
                 <HardDrive className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
                 <span>{formatBytes(stats.totalBytes)}</span>
-                <span className="text-[10px] text-indigo-400 dark:text-indigo-400 font-normal hidden sm:inline">
-                  stored
-                </span>
               </span>
             </div>
             <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium hidden sm:block">
@@ -1008,7 +1028,7 @@ export default function App() {
           <input
             ref={searchInputRef}
             type="text"
-            placeholder="Search files (Press '/' to focus)..."
+            placeholder="Search photos, videos, files (Press '/' to focus)..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-12 py-2 text-sm bg-slate-100/90 dark:bg-slate-900/90 hover:bg-slate-100 dark:hover:bg-slate-800/90 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-transparent dark:border-slate-800/90 rounded-full focus:bg-white dark:focus:bg-slate-950 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 focus:outline-none transition-all font-normal"
@@ -1027,7 +1047,7 @@ export default function App() {
           )}
         </div>
 
-        {/* Header Actions: Theme Switcher, Refresh, Upload, Lock */}
+        {/* Header Actions: Theme Switcher, Refresh, Primary Upload, Vault Settings Menu */}
         <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Night Mode Toggle Button */}
           <button
@@ -1066,29 +1086,81 @@ export default function App() {
             <span className="hidden sm:inline">Upload</span>
           </button>
 
-          {/* Change Vault Password Button - Clearly Visible */}
-          <button
-            onClick={() => {
-              setPasswordModalMode('change');
-              setShowPasswordModal(true);
-            }}
-            title="Change Vault Password & Revoke Other Devices"
-            className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/80 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 rounded-full transition-all active:scale-95 shadow-xs"
-          >
-            <Key className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-            <span className="hidden sm:inline">Change Password</span>
-            <span className="sm:hidden">Password</span>
-          </button>
+          {/* Vault Security Dropdown Menu (Organized & Clean) */}
+          <div className="relative" ref={vaultMenuRef}>
+            <button
+              onClick={() => setShowVaultMenu(!showVaultMenu)}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-800 rounded-full transition-all active:scale-95 shadow-2xs"
+              title="Vault Security & Settings"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+              <span className="hidden sm:inline">Vault</span>
+              <ChevronDown className="w-3 h-3 text-slate-400" />
+            </button>
 
-          {/* Lock Vault Button */}
-          <button
-            onClick={() => handleLock('Vault locked successfully.')}
-            title="Lock Vault"
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 bg-slate-100 dark:bg-slate-900 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-slate-200/80 dark:border-slate-800 rounded-full transition-all active:scale-95"
-          >
-            <Lock className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Lock</span>
-          </button>
+            {/* Floating Dropdown Card */}
+            {showVaultMenu && (
+              <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-2xl shadow-black/30 z-50 animate-in fade-in zoom-in-95 duration-150 flex flex-col gap-3">
+                {/* Vault Status Header */}
+                <div className="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                  <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+                    <Lock className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                      TelePhotos Private Vault
+                    </p>
+                    <p className="text-[11px] text-emerald-500 font-semibold flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Session Encrypted & Active
+                    </p>
+                  </div>
+                </div>
+
+                {/* Storage Summary */}
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-100 dark:border-slate-800/80 text-xs">
+                  <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1">
+                    <span>Cloud Storage:</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200">
+                      {formatBytes(stats.totalBytes)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+                    <span>Total Media Files:</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200">
+                      {stats.totalCount} items
+                    </span>
+                  </div>
+                </div>
+
+                {/* Action Items */}
+                <div className="flex flex-col gap-1.5">
+                  <button
+                    onClick={() => {
+                      setShowVaultMenu(false);
+                      setPasswordModalMode('change');
+                      setShowPasswordModal(true);
+                    }}
+                    className="w-full py-2.5 px-3 rounded-xl bg-blue-50/80 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-400 text-xs font-bold flex items-center gap-2 transition-colors text-left"
+                  >
+                    <Key className="w-4 h-4 text-amber-500 shrink-0" />
+                    <span>Change Password & Revoke Devices</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setShowVaultMenu(false);
+                      handleLock('Vault locked successfully.');
+                    }}
+                    className="w-full py-2.5 px-3 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-2 transition-colors text-left"
+                  >
+                    <Lock className="w-4 h-4 shrink-0" />
+                    <span>Lock Vault & Sign Out</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -1103,120 +1175,8 @@ export default function App() {
           className="hidden"
         />
 
-        {/* 4 Dedicated Category Metric Cards (Photos, Videos, Audio, Documents) */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-          {/* 1. Photos Card */}
-          <div
-            onClick={() => setActiveTab('images')}
-            className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between group hover:-translate-y-0.5 ${
-              activeTab === 'images'
-                ? 'bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/50 dark:to-slate-900 border-blue-500 ring-2 ring-blue-500/20 shadow-md shadow-blue-500/10'
-                : 'bg-white dark:bg-slate-900/80 border-slate-200/80 dark:border-slate-800/90 hover:border-blue-400 dark:hover:border-blue-500/60 shadow-xs hover:shadow-md'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-blue-100 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:scale-105 transition-transform shadow-inner">
-                <ImageIcon className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                  Photos
-                </p>
-                <p className="text-xl font-black text-slate-900 dark:text-white leading-tight">
-                  {stats.imageCount}
-                </p>
-              </div>
-            </div>
-            {activeTab === 'images' && (
-              <span className="w-2.5 h-2.5 rounded-full bg-blue-600 ring-4 ring-blue-100 dark:ring-blue-950 shrink-0" />
-            )}
-          </div>
-
-          {/* 2. Videos Card */}
-          <div
-            onClick={() => setActiveTab('videos')}
-            className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between group hover:-translate-y-0.5 ${
-              activeTab === 'videos'
-                ? 'bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-950/50 dark:to-slate-900 border-purple-500 ring-2 ring-purple-500/20 shadow-md shadow-purple-500/10'
-                : 'bg-white dark:bg-slate-900/80 border-slate-200/80 dark:border-slate-800/90 hover:border-purple-400 dark:hover:border-purple-500/60 shadow-xs hover:shadow-md'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-purple-100 dark:bg-purple-950/80 text-purple-600 dark:text-purple-400 flex items-center justify-center group-hover:scale-105 transition-transform shadow-inner">
-                <Film className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                  Videos
-                </p>
-                <p className="text-xl font-black text-slate-900 dark:text-white leading-tight">
-                  {stats.videoCount}
-                </p>
-              </div>
-            </div>
-            {activeTab === 'videos' && (
-              <span className="w-2.5 h-2.5 rounded-full bg-purple-600 ring-4 ring-purple-100 dark:ring-purple-950 shrink-0" />
-            )}
-          </div>
-
-          {/* 3. Music & Audio Card */}
-          <div
-            onClick={() => setActiveTab('audio')}
-            className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between group hover:-translate-y-0.5 ${
-              activeTab === 'audio'
-                ? 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/50 dark:to-slate-900 border-emerald-500 ring-2 ring-emerald-500/20 shadow-md shadow-emerald-500/10'
-                : 'bg-white dark:bg-slate-900/80 border-slate-200/80 dark:border-slate-800/90 hover:border-emerald-400 dark:hover:border-emerald-500/60 shadow-xs hover:shadow-md'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform shadow-inner">
-                <Music className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                  Audio & Music
-                </p>
-                <p className="text-xl font-black text-slate-900 dark:text-white leading-tight">
-                  {stats.audioCount}
-                </p>
-              </div>
-            </div>
-            {activeTab === 'audio' && (
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 ring-4 ring-emerald-100 dark:ring-emerald-950 shrink-0" />
-            )}
-          </div>
-
-          {/* 4. Documents Card */}
-          <div
-            onClick={() => setActiveTab('documents')}
-            className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between group hover:-translate-y-0.5 ${
-              activeTab === 'documents'
-                ? 'bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/50 dark:to-slate-900 border-amber-500 ring-2 ring-amber-500/20 shadow-md shadow-amber-500/10'
-                : 'bg-white dark:bg-slate-900/80 border-slate-200/80 dark:border-slate-800/90 hover:border-amber-400 dark:hover:border-amber-500/60 shadow-xs hover:shadow-md'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-amber-100 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover:scale-105 transition-transform shadow-inner">
-                <FileText className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                  Documents
-                </p>
-                <p className="text-xl font-black text-slate-900 dark:text-white leading-tight">
-                  {stats.docCount}
-                </p>
-              </div>
-            </div>
-            {activeTab === 'documents' && (
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-600 ring-4 ring-amber-100 dark:ring-amber-950 shrink-0" />
-            )}
-          </div>
-        </div>
-
-        {/* Upload Zone: Compact & Streamlined Banner / Active Progress */}
-        {uploadStatus ? (
-          /* ACCURATE TWO-PHASE UPLOAD DASHBOARD */
+        {/* Accurate Real-Time 2-Phase Upload Progress Dashboard (Active Only When Uploading) */}
+        {uploadStatus && (
           <div className="bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-900 rounded-3xl p-5 sm:p-6 shadow-md text-center max-w-2xl mx-auto w-full animate-in fade-in duration-200">
             <div className="flex items-center justify-center gap-2 mb-2">
               <span className="px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 dark:bg-blue-950/90 text-blue-700 dark:text-blue-300 animate-pulse">
@@ -1312,43 +1272,11 @@ export default function App() {
               </div>
             </div>
           </div>
-        ) : (
-          /* STREAMLINED ELEGANT UPLOAD BAR (Compact & Unobtrusive) */
-          <div
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            className="group relative rounded-3xl p-5 sm:p-6 transition-all duration-200 cursor-pointer border-2 border-dashed border-slate-300/80 dark:border-slate-800/80 hover:border-blue-500 dark:hover:border-blue-400 bg-white/70 dark:bg-slate-900/60 hover:bg-blue-50/20 dark:hover:bg-slate-800/40 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xs hover:shadow-lg hover:-translate-y-0.5"
-          >
-            <div className="flex items-center gap-3.5 sm:gap-4 text-center sm:text-left">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white group-hover:scale-105 flex items-center justify-center shrink-0 transition-transform duration-200 shadow-md shadow-blue-500/20">
-                <Upload className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                  Upload photos, videos, music, or documents
-                </p>
-                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-                  Click to browse or drop files anywhere • Direct Telegram MTProto streaming up to 2GB per file
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                className="px-5 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 active:scale-95 rounded-2xl transition-all shrink-0 flex items-center gap-1.5 shadow-md shadow-blue-600/25"
-              >
-                <Upload className="w-3.5 h-3.5" /> Select Files
-              </button>
-            </div>
-          </div>
         )}
 
-        {/* Sticky Controls Bar: Category Pills + Search + Sort + View Switcher */}
-        <div className="sticky top-[56px] sm:top-[65px] z-20 bg-slate-50/95 dark:bg-[#080c14]/95 backdrop-blur-xl py-2.5 px-0.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/70 dark:border-slate-800/70 transition-colors duration-200">
-          {/* Category Tabs: Photos, Videos, Audio, PDFs & Docs */}
+        {/* Sticky Controls Bar: User-Friendly Category Tabs + Search + Sort + Layout Density */}
+        <div className="sticky top-[56px] sm:top-[65px] z-20 bg-slate-50/95 dark:bg-[#080c14]/95 backdrop-blur-xl py-2 px-0.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/70 dark:border-slate-800/70 transition-colors duration-200">
+          {/* Segmented Category Control Tabs (Unified & Clean) */}
           <div className="flex items-center gap-1 p-1 bg-slate-200/70 dark:bg-slate-900 border dark:border-slate-800/80 rounded-2xl overflow-x-auto no-scrollbar max-w-full">
             <button
               onClick={() => setActiveTab('all')}
@@ -1402,14 +1330,14 @@ export default function App() {
             </button>
           </div>
 
-          {/* Controls: Search, Sort Dropdown & Layout Switcher */}
+          {/* Controls: Search (Mobile), Sort Dropdown & Layout Switcher */}
           <div className="flex items-center gap-2 w-full sm:w-auto">
             {/* Search bar on mobile */}
             <div className="relative flex-1 md:hidden">
               <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
               <input
                 type="text"
-                placeholder="Search media..."
+                placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-8 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl focus:outline-none focus:border-blue-500 shadow-2xs"
@@ -1425,19 +1353,19 @@ export default function App() {
             </div>
 
             {/* Sort Selector Dropdown */}
-            <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl px-2 py-1 shadow-2xs shrink-0">
+            <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl px-2.5 py-1.5 shadow-2xs shrink-0">
               <ArrowUpDown className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="bg-transparent text-xs font-semibold text-slate-700 dark:text-slate-200 pl-1.5 pr-1 py-0.5 focus:outline-none cursor-pointer"
+                className="bg-transparent text-xs font-bold text-slate-700 dark:text-slate-200 pl-1.5 pr-1 focus:outline-none cursor-pointer"
                 title="Sort items"
               >
-                <option value="newest" className="dark:bg-slate-900">Newest First</option>
-                <option value="oldest" className="dark:bg-slate-900">Oldest First</option>
-                <option value="largest" className="dark:bg-slate-900">Largest Size</option>
-                <option value="smallest" className="dark:bg-slate-900">Smallest Size</option>
-                <option value="name" className="dark:bg-slate-900">Name (A-Z)</option>
+                <option value="newest" className="dark:bg-slate-900">Newest</option>
+                <option value="oldest" className="dark:bg-slate-900">Oldest</option>
+                <option value="largest" className="dark:bg-slate-900">Largest</option>
+                <option value="smallest" className="dark:bg-slate-900">Smallest</option>
+                <option value="name" className="dark:bg-slate-900">A - Z</option>
               </select>
             </div>
 
@@ -1450,7 +1378,7 @@ export default function App() {
                     ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
-                title="Google Photos Square Grid"
+                title="Square Grid (3 columns on mobile, 4-6 on desktop)"
               >
                 <LayoutGrid className="w-4 h-4" />
               </button>
@@ -1712,15 +1640,70 @@ export default function App() {
         </button>
       )}
 
-      {/* Mobile Floating Action Button (FAB) for Quick 1-Tap Uploads */}
-      <button
-        onClick={() => fileInputRef.current?.click()}
-        disabled={!!uploadStatus}
-        className="sm:hidden fixed bottom-6 right-6 z-40 p-4 rounded-full bg-blue-600 hover:bg-blue-500 text-white shadow-2xl shadow-blue-600/40 active:scale-90 transition-all flex items-center justify-center border border-white/20"
-        title="Upload Media"
-      >
-        <Upload className="w-6 h-6" />
-      </button>
+      {/* Native-Style Mobile Bottom Navigation Bar (Ultra-clean, thumb-friendly navigation) */}
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#080c14]/95 backdrop-blur-2xl border-t border-slate-200/80 dark:border-slate-800/80 px-2 py-1.5 safe-bottom flex items-center justify-around shadow-2xl transition-colors duration-200">
+        {/* Tab 1: All Files */}
+        <button
+          onClick={() => setActiveTab('all')}
+          className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl transition-all ${
+            activeTab === 'all'
+              ? 'text-blue-600 dark:text-blue-400 font-bold'
+              : 'text-slate-500 hover:text-slate-900 dark:hover:text-white font-medium'
+          }`}
+        >
+          <Layers className="w-5 h-5" />
+          <span className="text-[10px]">All</span>
+        </button>
+
+        {/* Tab 2: Photos */}
+        <button
+          onClick={() => setActiveTab('images')}
+          className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl transition-all ${
+            activeTab === 'images'
+              ? 'text-blue-600 dark:text-blue-400 font-bold'
+              : 'text-slate-500 hover:text-slate-900 dark:hover:text-white font-medium'
+          }`}
+        >
+          <ImageIcon className="w-5 h-5" />
+          <span className="text-[10px]">Photos</span>
+        </button>
+
+        {/* Central Floating Upload Button */}
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={!!uploadStatus}
+          className="relative -top-4 w-12 h-12 rounded-full bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-400 text-white flex items-center justify-center shadow-lg shadow-blue-500/40 active:scale-95 transition-transform border-2 border-white dark:border-[#080c14]"
+          title="Upload Files"
+        >
+          <Upload className="w-5 h-5" />
+        </button>
+
+        {/* Tab 3: Videos */}
+        <button
+          onClick={() => setActiveTab('videos')}
+          className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl transition-all ${
+            activeTab === 'videos'
+              ? 'text-purple-600 dark:text-purple-400 font-bold'
+              : 'text-slate-500 hover:text-slate-900 dark:hover:text-white font-medium'
+          }`}
+        >
+          <Film className="w-5 h-5" />
+          <span className="text-[10px]">Videos</span>
+        </button>
+
+        {/* Tab 4: Vault Security */}
+        <button
+          onClick={() => setShowVaultMenu(!showVaultMenu)}
+          className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl transition-all ${
+            showVaultMenu
+              ? 'text-blue-600 dark:text-blue-400 font-bold'
+              : 'text-slate-500 hover:text-slate-900 dark:hover:text-white font-medium'
+          }`}
+        >
+          <ShieldCheck className="w-5 h-5" />
+          <span className="text-[10px]">Vault</span>
+        </button>
+      </nav>
 
       {/* High-Performance Lightbox & Media Viewer with Touch Swipe, Slide Transitions & Filmstrip */}
       {selectedFile && (
