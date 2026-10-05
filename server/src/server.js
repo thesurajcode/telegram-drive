@@ -56,17 +56,12 @@ async function startServer() {
     await prisma.$connect();
     console.log('✅ PostgreSQL database connected successfully.');
 
-    // 2. Initialize and authenticate GramJS MTProto Telegram Client
-    console.log('📡 Initializing Telegram MTProto client...');
-    await initTelegramClient();
-    console.log('✅ Telegram client is connected and ready for media operations.');
-
-    // 3. Start Express HTTP Server
-    const server = app.listen(PORT, () => {
-      console.log(`\n🚀 Server is running on: http://localhost:${PORT}`);
-      console.log(`   - Upload endpoint: POST http://localhost:${PORT}/api/upload`);
-      console.log(`   - Gallery list:   GET  http://localhost:${PORT}/api/files`);
-      console.log(`   - Media stream:   GET  http://localhost:${PORT}/api/stream/:messageId\n`);
+    // 2. Start Express HTTP Server FIRST so hosting providers (e.g. Render) detect the open port immediately
+    const server = app.listen(PORT, '0.0.0.0', () => {
+      console.log(`\n🚀 Server is running on: http://0.0.0.0:${PORT}`);
+      console.log(`   - Upload endpoint: POST http://0.0.0.0:${PORT}/api/upload`);
+      console.log(`   - Gallery list:   GET  http://0.0.0.0:${PORT}/api/files`);
+      console.log(`   - Media stream:   GET  http://0.0.0.0:${PORT}/api/stream/:messageId\n`);
     });
 
     // Support large 2GB file uploads without socket timeout
@@ -75,6 +70,16 @@ async function startServer() {
     server.headersTimeout = 66000;
     if (server.requestTimeout !== undefined) {
       server.requestTimeout = 30 * 60 * 1000;
+    }
+
+    // 3. Initialize and authenticate GramJS MTProto Telegram Client
+    console.log('📡 Initializing Telegram MTProto client...');
+    try {
+      await initTelegramClient();
+      console.log('✅ Telegram client is connected and ready for media operations.');
+    } catch (telegramErr) {
+      console.warn('⚠️ Telegram initial connection notice:', telegramErr.message || telegramErr);
+      console.log('🔄 Telegram client will connect upon first media request via getTelegramClient().');
     }
 
     // Graceful shutdown

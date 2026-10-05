@@ -63,13 +63,36 @@ async function initTelegramClient() {
 
   const apiId = parseInt(process.env.TELEGRAM_API_ID, 10);
   const apiHash = process.env.TELEGRAM_API_HASH;
-  const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  const sessionString = (process.env.TELEGRAM_SESSION_STRING || '').trim();
+  const botToken = (process.env.TELEGRAM_BOT_TOKEN || '').trim();
 
   if (!apiId || !apiHash) {
     throw new Error(
       'TELEGRAM_API_ID and TELEGRAM_API_HASH must be configured in your .env file.'
     );
+  }
+
+  // Sanitize session string: strip surrounding quotes, whitespace, and placeholder values
+  let rawSession = (process.env.TELEGRAM_SESSION_STRING || '').trim();
+  let sessionString = rawSession.replace(/^["']|["']$/g, '').trim();
+  const lowerSession = sessionString.toLowerCase();
+  if (
+    !sessionString ||
+    lowerSession === 'undefined' ||
+    lowerSession === 'null' ||
+    lowerSession === 'none' ||
+    lowerSession === 'false' ||
+    lowerSession.includes('your_') ||
+    lowerSession.includes('placeholder')
+  ) {
+    sessionString = '';
+  }
+
+  // GramJS StringSession v1 format must start with '1' and have sufficient length
+  if (sessionString && (!sessionString.startsWith('1') || sessionString.length < 50)) {
+    console.warn(
+      '⚠️ TELEGRAM_SESSION_STRING format is invalid (must start with "1"). Discarding and using Bot Token.'
+    );
+    sessionString = '';
   }
 
   if (!botToken && !sessionString) {
@@ -79,7 +102,22 @@ async function initTelegramClient() {
   }
 
   console.log('🔄 Initializing GramJS Telegram client...');
-  const stringSession = new StringSession(sessionString);
+
+  // Safely instantiate StringSession with error handling to avoid "Not a valid string" crashes
+  let stringSession;
+  if (sessionString) {
+    try {
+      stringSession = new StringSession(sessionString);
+    } catch (sessionErr) {
+      console.warn(
+        `⚠️ Invalid TELEGRAM_SESSION_STRING ("${sessionErr.message}"). Discarding and falling back to Bot Token.`
+      );
+      sessionString = '';
+      stringSession = new StringSession('');
+    }
+  } else {
+    stringSession = new StringSession('');
+  }
 
   clientInstance = new TelegramClient(stringSession, apiId, apiHash, {
     connectionRetries: 5,
@@ -88,10 +126,12 @@ async function initTelegramClient() {
   try {
     if (sessionString) {
       // Connect using pre-existing StringSession
+      console.log('🔑 Connecting via saved StringSession...');
       await clientInstance.connect();
       console.log('✅ Telegram client connected using saved StringSession.');
     } else {
       // Authenticate via Bot Token
+      console.log('🤖 Authenticating via TELEGRAM_BOT_TOKEN...');
       await clientInstance.start({
         botAuthToken: botToken,
       });
@@ -113,9 +153,9 @@ async function initTelegramClient() {
 
     return clientInstance;
   } catch (error) {
-    console.error('❌ Failed to initialize Telegram client:', error);
+    console.error('❌ Failed to initialize Telegram client:', error.message || error);
     // If the session string was invalid/revoked or duplicate key, retry once with bot token
-    if (sessionString && botToken) {
+    if (botToken) {
       console.log('🔄 Retrying login using TELEGRAM_BOT_TOKEN...');
       try {
         if (clientInstance) {
@@ -123,16 +163,21 @@ async function initTelegramClient() {
         }
       } catch (_) {}
 
-      const fallbackSession = new StringSession('');
-      clientInstance = new TelegramClient(fallbackSession, apiId, apiHash, {
-        connectionRetries: 5,
-      });
-      await clientInstance.start({
-        botAuthToken: botToken,
-      });
-      console.log('✅ Telegram client re-authenticated using Bot Token.');
-      exportSessionString(clientInstance);
-      return clientInstance;
+      try {
+        const fallbackSession = new StringSession('');
+        clientInstance = new TelegramClient(fallbackSession, apiId, apiHash, {
+          connectionRetries: 5,
+        });
+        await clientInstance.start({
+          botAuthToken: botToken,
+        });
+        console.log('✅ Telegram client re-authenticated using Bot Token.');
+        exportSessionString(clientInstance);
+        return clientInstance;
+      } catch (retryErr) {
+        console.error('❌ Bot Token fallback authentication failed:', retryErr.message || retryErr);
+        throw retryErr;
+      }
     }
     throw error;
   }

@@ -20,4 +20,4 @@ COPY . .
 EXPOSE 3001
 
 # Run Prisma schema push to ensure DB is migrated, then start backend server
-CMD ["sh", "-c", "npx prisma generate && npx prisma db push && npm run dev"]
+CMD ["sh", "-c", "npx prisma generate && npx prisma db push && node src/server.js"]

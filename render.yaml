@@ -26,7 +26,7 @@ services:
       - key: TELEGRAM_CHANNEL_ID
         sync: false
       - key: TELEGRAM_SESSION_STRING
-        sync: false
+        value: ""
 
   # 2. Frontend (Vite + React Static Site)
   - type: web
