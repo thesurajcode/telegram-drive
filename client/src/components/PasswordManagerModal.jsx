@@ -203,8 +203,16 @@ export default function PasswordManagerModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150 overflow-y-auto">
-      <div className="relative w-full max-w-sm sm:max-w-md my-auto bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xl flex flex-col text-slate-100 z-10 max-h-[92dvh] overflow-y-auto">
+    <div
+      role="dialog"
+      aria-modal="true"
+      style={{
+        paddingTop: 'max(env(safe-area-inset-top, 0px) + 16px, 16px)',
+        paddingBottom: 'max(env(safe-area-inset-bottom, 0px) + 16px, 16px)',
+      }}
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150 overflow-y-auto"
+    >
+      <div className="relative w-full max-w-sm sm:max-w-md my-auto bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xl flex flex-col text-slate-100 z-10 max-h-[min(90vh,calc(100dvh-3rem))] overflow-y-auto">
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -269,9 +277,23 @@ export default function PasswordManagerModal({
 
         {/* Error / Success Feedback */}
         {errorMsg && (
-          <div className="mb-2.5 flex items-center gap-2 p-2 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span className="leading-tight">{errorMsg}</span>
+          <div className="mb-2.5 flex flex-col gap-1 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span className="leading-tight">{errorMsg}</span>
+            </div>
+            {currentMode === 'reset' && activeTab === 'otp' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('master');
+                  setErrorMsg('');
+                }}
+                className="mt-1 text-left text-[11px] font-bold text-amber-400 hover:text-amber-300 underline"
+              >
+                &rarr; Switch to Master Key tab (Reset immediately without email)
+              </button>
+            )}
           </div>
         )}
 
@@ -286,46 +308,66 @@ export default function PasswordManagerModal({
         {currentMode === 'reset' ? (
           <form onSubmit={handleResetSubmit} className="flex flex-col gap-2.5">
             {activeTab === 'otp' ? (
-              <div>
-                <div className="flex items-center justify-between mb-1 text-xs">
-                  <label className="font-semibold text-slate-300">
-                    6-Digit Verification Code
-                  </label>
-                  <button
-                    type="button"
-                    onClick={handleRequestOtp}
-                    disabled={isSendingOtp || cooldown > 0}
-                    className="text-blue-400 hover:text-blue-300 font-semibold text-xs flex items-center gap-1 transition-colors disabled:opacity-50 py-0.5 px-1.5 rounded hover:bg-blue-500/10"
-                  >
-                    {isSendingOtp ? (
-                      <>
-                        <RefreshCw className="w-3 h-3 animate-spin" />
-                        <span>Sending...</span>
-                      </>
-                    ) : cooldown > 0 ? (
-                      <span>Resend ({cooldown}s)</span>
-                    ) : (
-                      <>
-                        <Send className="w-3 h-3" />
-                        <span>{otpSent ? 'Resend Code' : 'Send Code to Gmail'}</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                  placeholder="Enter 6-digit code"
-                  className="w-full h-10 px-3 bg-slate-950 border border-slate-800 rounded-xl text-center text-lg font-mono font-bold tracking-[0.3em] text-blue-400 placeholder:text-slate-600 placeholder:tracking-normal placeholder:font-normal placeholder:text-xs focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all shadow-inner"
-                />
-                {otpSent && (
-                  <p className="text-[11px] text-emerald-400 font-medium mt-1 flex items-center gap-1">
-                    <CheckCircle className="w-3 h-3" /> Sent to {targetEmail || 'your Gmail inbox'}
-                  </p>
+              <div className="flex flex-col gap-2.5">
+                {/* Send OTP Action Card */}
+                {!otpSent ? (
+                  <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/30 flex flex-col gap-2">
+                    <p className="text-[11px] text-slate-300 leading-relaxed">
+                      Click below to send a 6-digit one-time code to your registered Gmail account.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleRequestOtp}
+                      disabled={isSendingOtp}
+                      className="w-full py-2 px-3 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white text-xs font-bold rounded-lg shadow transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      {isSendingOtp ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Dispatching OTP to Gmail...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-3.5 h-3.5" />
+                          <span>Send 6-Digit OTP to Gmail</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2 text-emerald-400">
+                      <CheckCircle className="w-4 h-4 shrink-0" />
+                      <span className="text-[11px] font-medium truncate max-w-[200px]">
+                        Sent to {targetEmail || 'Gmail'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRequestOtp}
+                      disabled={isSendingOtp || cooldown > 0}
+                      className="text-blue-400 hover:text-blue-300 text-[11px] font-bold disabled:opacity-50"
+                    >
+                      {cooldown > 0 ? `Resend (${cooldown}s)` : 'Resend Code'}
+                    </button>
+                  </div>
                 )}
+
+                {/* 6-Digit Code Input */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Enter 6-Digit Verification Code
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                    placeholder="123456"
+                    className="w-full h-11 px-3 bg-slate-950 border border-slate-800 rounded-xl text-center text-xl font-mono font-black tracking-[0.35em] text-blue-400 placeholder:text-slate-600 placeholder:tracking-normal placeholder:font-normal placeholder:text-xs focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all shadow-inner"
+                  />
+                </div>
               </div>
             ) : (
               <div>

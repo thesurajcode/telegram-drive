@@ -14,7 +14,7 @@ services:
       - key: TELEGRAM_UPLOAD_WORKERS
         value: 1
       - key: APP_PASSWORD
-        value: "@9525"
+        sync: false
       - key: DATABASE_URL
         sync: false
       - key: TELEGRAM_API_ID

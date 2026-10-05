@@ -125,10 +125,36 @@
   scrollbar-width: none;
 }
 
-/* Safe area insets for mobile notched devices */
+/* Safe area insets for mobile notched devices & Android status bar */
 .safe-top {
-  padding-top: max(env(safe-area-inset-top), 0.75rem);
+  padding-top: max(env(safe-area-inset-top, 0px), 1rem);
+}
+.safe-top-header {
+  padding-top: max(env(safe-area-inset-top, 0px), 2.5rem);
+}
+@media (min-width: 640px) {
+  .safe-top-header {
+    padding-top: 0.75rem;
+  }
 }
 .safe-bottom {
-  padding-bottom: max(env(safe-area-inset-bottom), 0.75rem);
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 0.75rem);
 }
+
+/* PWA and Mobile Touch Polish */
+@media (display-mode: standalone) {
+  /* When installed as PWA app */
+  body {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  input, textarea {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+

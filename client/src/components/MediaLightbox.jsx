@@ -19,6 +19,7 @@ import {
   RotateCcw,
   SlidersHorizontal,
 } from 'lucide-react';
+import PDFViewer from './PDFViewer';
 
 /**
  * Mobile-First Media Lightbox with Ultra-Smooth Navigation
@@ -291,7 +292,7 @@ export default function MediaLightbox({
     >
       {/* 1. TOP HEADER TOOLBAR */}
       <div
-        className={`relative z-30 flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3.5 bg-gradient-to-b from-slate-950/95 via-slate-950/70 to-transparent text-white transition-all duration-200 ${
+        className={`relative z-30 flex items-center justify-between px-3 sm:px-6 pt-10 sm:pt-3.5 pb-2.5 sm:pb-3.5 bg-gradient-to-b from-slate-950/95 via-slate-950/70 to-transparent text-white transition-all duration-200 ${
           showControls ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'
         }`}
       >
@@ -541,16 +542,18 @@ export default function MediaLightbox({
             </div>
           )}
 
-          {/* 4. PDF Document Viewer */}
+          {/* 4. Native In-App PDF Document Viewer (Powered by PDF.js) */}
           {fileType === 'pdf' && (
-            <div className="w-[94vw] sm:w-[80vw] max-w-5xl h-[75vh] flex flex-col items-center justify-center bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow-2xl">
-              <iframe
-                src={streamUrl}
-                title={currentFile.fileName}
-                onLoad={() => setIsMediaLoaded(true)}
-                className="w-full h-full rounded-2xl"
-              />
-            </div>
+            <PDFViewer
+              key={currentFile.telegramMessageId}
+              url={streamUrl}
+              fileName={currentFile.fileName}
+              onLoadSuccess={() => setIsMediaLoaded(true)}
+              onLoadError={() => {
+                setIsMediaLoaded(true);
+                setLoadError(true);
+              }}
+            />
           )}
 
           {/* 5. Generic Document Viewer */}

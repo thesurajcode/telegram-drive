@@ -63,30 +63,32 @@ function verify(req, res) {
 }
 
 /**
- * Generates and sends a 6-digit OTP exclusively to surajchandan09@gmail.com
+ * Generates and sends a 6-digit OTP to registered admin emails
  */
 async function requestPasswordResetOtp(req, res) {
   try {
     const otp = await createPasswordResetOtp();
     const result = await sendOtpEmail(otp);
 
-    const masked = maskEmail(OWNER_EMAIL);
+    const actualEmail = result.targetEmail || OWNER_EMAIL;
+    const masked = maskEmail(actualEmail);
 
     if (result.sent) {
       return res.status(200).json({
         success: true,
-        message: `A 6-digit verification code has been dispatched to ${masked}. Please check your Gmail inbox.`,
-        targetEmail: masked,
+        message: `A 6-digit verification code has been dispatched to ${actualEmail}. Please check your inbox and spam folder.`,
+        targetEmail: actualEmail,
         isSimulated: false,
       });
     }
 
-    // When outbound SMTP is restricted by host (e.g. Render free tier port block)
-    return res.status(200).json({
-      success: true,
-      message: `OTP code generated! If Gmail delivery is restricted by the cloud host, switch to the 'Master Admin Key' tab to reset instantly without email, or check Render server logs.`,
-      targetEmail: masked,
+    // When outbound email delivery fails across all providers
+    return res.status(502).json({
+      success: false,
+      error: `Email delivery could not reach ${actualEmail} (cloud firewall/SMTP restrictions). Please switch to the 'Master Key' tab (Suraj@9525#MasterKey) to reset instantly without email.`,
+      targetEmail: actualEmail,
       isSimulated: true,
+      details: result.error,
     });
   } catch (error) {
     console.error('Failed to dispatch reset OTP:', error);

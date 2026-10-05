@@ -39,11 +39,16 @@ import {
   ChevronDown,
   Shield,
   Layers,
+  Sparkles,
+  Server,
 } from 'lucide-react';
 import MediaLightbox from './components/MediaLightbox';
 import PasswordManagerModal from './components/PasswordManagerModal';
+import OfflineBanner from './components/OfflineBanner';
+import ServerConfigModal from './components/ServerConfigModal';
+import Toast from './components/Toast';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const DEFAULT_API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 /**
  * Format bytes into human-readable string (KB, MB, GB)
@@ -191,6 +196,12 @@ function groupFilesByTimeline(filesList, sortBy = 'newest') {
 const AUTH_TOKEN_KEY = 'telephotos_vault_token';
 
 export default function App() {
+  // Backend API URL State (configurable for local Wi-Fi / cloud deployment)
+  const [apiBaseUrl, setApiBaseUrl] = useState(() => {
+    return localStorage.getItem('telephotos_api_url') || DEFAULT_API_BASE_URL;
+  });
+  const [showServerModal, setShowServerModal] = useState(false);
+
   // Authentication & Vault Protection State
   const [authToken, setAuthToken] = useState(() => {
     return localStorage.getItem(AUTH_TOKEN_KEY) || sessionStorage.getItem(AUTH_TOKEN_KEY) || '';
@@ -215,6 +226,14 @@ export default function App() {
   const [showVaultMenu, setShowVaultMenu] = useState(false);
   const vaultMenuRef = useRef(null);
   const mobileVaultSheetRef = useRef(null);
+
+  const triggerHaptic = (ms = 10) => {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(ms);
+      }
+    } catch (e) {}
+  };
 
   // Close vault menu when clicking outside (supports desktop dropdown & mobile bottom sheet)
   useEffect(() => {
@@ -259,7 +278,21 @@ export default function App() {
     }
   }, [isDarkMode]);
 
-  const toggleTheme = () => setIsDarkMode((prev) => !prev);
+  const toggleTheme = () => {
+    triggerHaptic(10);
+    setIsDarkMode((prev) => !prev);
+  };
+
+  // Deep link shortcut actions: ?action=upload or ?action=vault
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const action = urlParams.get('action');
+    if (action === 'upload' && isAuthenticated) {
+      setTimeout(() => fileInputRef.current?.click(), 500);
+    } else if (action === 'vault' && isAuthenticated) {
+      setShowVaultMenu(true);
+    }
+  }, [isAuthenticated]);
 
   // Global keyboard shortcut: '/' focuses search input
   useEffect(() => {
@@ -295,11 +328,8 @@ export default function App() {
 
   const fileInputRef = useRef(null);
 
-  const showToast = (message, type = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => {
-      setToast(null);
-    }, 5000);
+  const showToast = (message, type = 'success', duration = 4500) => {
+    setToast({ message, type, duration, id: Date.now() });
   };
 
   /**
@@ -308,8 +338,8 @@ export default function App() {
   const getStreamUrl = (messageId) => {
     if (!messageId) return '';
     return authToken
-      ? `${API_BASE_URL}/stream/${messageId}?token=${encodeURIComponent(authToken)}`
-      : `${API_BASE_URL}/stream/${messageId}`;
+      ? `${apiBaseUrl}/stream/${messageId}?token=${encodeURIComponent(authToken)}`
+      : `${apiBaseUrl}/stream/${messageId}`;
   };
 
   /**
@@ -327,7 +357,7 @@ export default function App() {
 
       try {
         axios.defaults.headers.common['Authorization'] = `Bearer ${savedToken}`;
-        await axios.get(`${API_BASE_URL}/auth/verify`);
+        await axios.get(`${apiBaseUrl}/auth/verify`);
         setAuthToken(savedToken);
         setIsAuthenticated(true);
       } catch (err) {
@@ -381,7 +411,7 @@ export default function App() {
     setAuthError('');
 
     try {
-      const res = await axios.post(`${API_BASE_URL}/auth/login`, {
+      const res = await axios.post(`${apiBaseUrl}/auth/login`, {
         password: passwordInput.trim(),
       });
 
@@ -400,7 +430,11 @@ export default function App() {
       }
     } catch (err) {
       console.error('Authentication error:', err);
-      setAuthError(err.response?.data?.error || 'Incorrect password. Access denied.');
+      if (!err.response) {
+        setAuthError(`Cannot connect to server at ${apiBaseUrl}. Please tap "Server Settings" below to enter your live backend or computer IP.`);
+      } else {
+        setAuthError(err.response?.data?.error || 'Incorrect password. Access denied.');
+      }
     } finally {
       setIsUnlocking(false);
     }
@@ -446,14 +480,14 @@ export default function App() {
     if (!isAuthenticated) return;
     setLoading(true);
     try {
-      const response = await axios.get(`${API_BASE_URL}/files`);
+      const response = await axios.get(`${apiBaseUrl}/files`);
       if (response.data && response.data.data) {
         setFiles(response.data.data);
       }
     } catch (err) {
       console.error('Failed to load media files:', err);
       showToast(
-        err.response?.data?.error || 'Failed to connect to backend server. Ensure it is running on port 3001.',
+        err.response?.data?.error || `Failed to connect to backend server (${apiBaseUrl}).`,
         'error'
       );
     } finally {
@@ -507,7 +541,7 @@ export default function App() {
       const startTelegramProgressPolling = () => {
         pollInterval = setInterval(async () => {
           try {
-            const res = await axios.get(`${API_BASE_URL}/upload-progress/${uploadId}`);
+            const res = await axios.get(`${apiBaseUrl}/upload-progress/${uploadId}`);
             if (res.data && res.data.status === 'telegram_upload') {
               setUploadStatus((prev) => {
                 if (!prev) return null;
@@ -532,7 +566,7 @@ export default function App() {
       formData.append('file', file);
       try {
         const response = await axios.post(
-          `${API_BASE_URL}/upload?uploadId=${encodeURIComponent(uploadId)}`,
+          `${apiBaseUrl}/upload?uploadId=${encodeURIComponent(uploadId)}`,
           formData,
           {
             timeout: 0, // No client-side timeout for 2GB files
@@ -721,7 +755,7 @@ export default function App() {
     }
 
     try {
-      await axios.delete(`${API_BASE_URL}/files/${messageId}`);
+      await axios.delete(`${apiBaseUrl}/files/${messageId}`);
       setFiles((prev) => prev.filter((item) => item.telegramMessageId !== messageId));
       if (selectedFile?.telegramMessageId === messageId) {
         setSelectedFile(null);
@@ -785,6 +819,9 @@ export default function App() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 relative overflow-hidden selection:bg-blue-600 selection:text-white">
+        {/* Offline Banner */}
+        <OfflineBanner />
+
         {/* Ambient cosmic radial glow auras */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-tr from-blue-600/20 via-indigo-600/15 to-purple-600/10 rounded-full blur-[120px] pointer-events-none" />
         <div className="absolute bottom-10 left-10 w-80 h-80 bg-blue-500/10 rounded-full blur-[100px] pointer-events-none" />
@@ -853,9 +890,21 @@ export default function App() {
             </div>
 
             {authError && (
-              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs text-left animate-in fade-in duration-200">
-                <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                <span>{authError}</span>
+              <div className="flex flex-col gap-2 p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs text-left animate-in fade-in duration-200">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+                  <span className="leading-snug">{authError}</span>
+                </div>
+                {authError.toLowerCase().includes('server') && (
+                  <button
+                    type="button"
+                    onClick={() => setShowServerModal(true)}
+                    className="self-start mt-0.5 px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 active:scale-95 border border-rose-500/40 rounded-xl text-rose-200 text-[11px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    <Server className="w-3.5 h-3.5" />
+                    <span>Open Server Settings</span>
+                  </button>
+                )}
               </div>
             )}
 
@@ -893,7 +942,7 @@ export default function App() {
             </button>
           </form>
 
-          {/* Forgot / Reset Password Trigger */}
+          {/* Forgot / Reset Password Trigger & Server Config */}
           <div className="w-full mt-4 pt-4 border-t border-slate-800/80 flex flex-col gap-2">
             <button
               type="button"
@@ -906,6 +955,15 @@ export default function App() {
             >
               <Key className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <span>Forgot Password? Reset with OTP / Master Key</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowServerModal(true)}
+              className="w-full py-1.5 px-3 bg-slate-950/70 hover:bg-slate-900 border border-slate-800/80 text-slate-400 hover:text-slate-200 text-[11px] font-medium rounded-xl flex items-center justify-center gap-1.5 transition-all"
+            >
+              <Server className="w-3.5 h-3.5 text-blue-500" />
+              <span>Server: <span className="font-mono text-slate-300 truncate max-w-[180px]">{apiBaseUrl}</span></span>
             </button>
           </div>
 
@@ -921,28 +979,26 @@ export default function App() {
           isOpen={showPasswordModal}
           onClose={() => setShowPasswordModal(false)}
           mode={passwordModalMode}
-          apiBaseUrl={API_BASE_URL}
+          apiBaseUrl={apiBaseUrl}
           onSuccess={handlePasswordSuccess}
           showToast={showToast}
         />
 
+        {/* Server Config Modal */}
+        <ServerConfigModal
+          isOpen={showServerModal}
+          onClose={() => setShowServerModal(false)}
+          currentUrl={apiBaseUrl}
+          onSave={(newUrl) => {
+            setApiBaseUrl(newUrl);
+            localStorage.setItem('telephotos_api_url', newUrl);
+            setAuthError('');
+          }}
+          showToast={showToast}
+        />
+
         {/* Toast Notification on Lock Screen */}
-        {toast && (
-          <div
-            className={`fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-xl border text-sm font-medium transition-all duration-300 ${
-              toast.type === 'error'
-                ? 'bg-rose-950 border-rose-800 text-rose-200'
-                : 'bg-slate-900 border-slate-800 text-slate-200'
-            }`}
-          >
-            {toast.type === 'error' ? (
-              <AlertCircle className="w-4 h-4 text-rose-400" />
-            ) : (
-              <CheckCircle className="w-4 h-4 text-emerald-400" />
-            )}
-            <span>{toast.message}</span>
-          </div>
-        )}
+        <Toast toast={toast} onClose={() => setToast(null)} />
       </div>
     );
   }
@@ -991,7 +1047,7 @@ export default function App() {
       )}
 
       {/* Top Navbar: Modern Frosted Glass Aesthetic with Theme Toggle & Vault Menu */}
-      <header className="sticky top-0 z-40 bg-white/90 dark:bg-[#080c14]/95 backdrop-blur-2xl border-b border-slate-200/80 dark:border-slate-800/80 px-3 sm:px-8 py-2 sm:py-3 flex items-center justify-between gap-2 sm:gap-3 shadow-xs transition-colors duration-200 w-full overflow-visible">
+      <header className="sticky top-0 z-40 bg-white/90 dark:bg-[#080c14]/95 backdrop-blur-2xl border-b border-slate-200/80 dark:border-slate-800/80 px-3.5 sm:px-8 pt-10 sm:pt-3.5 pb-2.5 sm:pb-3 flex items-center justify-between gap-2 sm:gap-3 shadow-xs transition-colors duration-200 w-full overflow-visible">
         {/* Logo, Identity & Small Area Storage Used Indicator */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
           <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-400 flex items-center justify-center text-white shadow-md shadow-blue-500/25 ring-2 ring-blue-500/20 shrink-0">
@@ -1829,10 +1885,28 @@ export default function App() {
         isOpen={showPasswordModal}
         onClose={() => setShowPasswordModal(false)}
         mode={passwordModalMode}
-        apiBaseUrl={API_BASE_URL}
+        apiBaseUrl={apiBaseUrl}
         onSuccess={handlePasswordSuccess}
         showToast={showToast}
       />
+
+      {/* Server Config Modal */}
+      <ServerConfigModal
+        isOpen={showServerModal}
+        onClose={() => setShowServerModal(false)}
+        currentUrl={apiBaseUrl}
+        onSave={(newUrl) => {
+          setApiBaseUrl(newUrl);
+          localStorage.setItem('telephotos_api_url', newUrl);
+        }}
+        showToast={showToast}
+      />
+
+      {/* Live Offline / Online Connectivity Banner */}
+      <OfflineBanner onRetryConnection={fetchGallery} />
+
+      {/* Global Toast Feedback Popup */}
+      <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
   );
 }
