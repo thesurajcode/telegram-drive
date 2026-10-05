@@ -31,6 +31,8 @@ import {
   ShieldCheck,
   LayoutGrid,
   Columns,
+  ArrowUpDown,
+  ChevronUp,
 } from 'lucide-react';
 import MediaLightbox from './components/MediaLightbox';
 
@@ -110,9 +112,24 @@ function getFileType(file) {
 }
 
 /**
- * Groups an array of file records into Google Photos-style Timeline sections
+ * Groups an array of file records into Google Photos-style Timeline sections or sorted categories
  */
-function groupFilesByTimeline(filesList) {
+function groupFilesByTimeline(filesList, sortBy = 'newest') {
+  if (!filesList || filesList.length === 0) return [];
+
+  if (sortBy === 'largest') {
+    const sorted = [...filesList].sort((a, b) => (Number(b.size) || 0) - (Number(a.size) || 0));
+    return [{ title: 'Files by Size (Largest First)', timestamp: 0, items: sorted }];
+  }
+  if (sortBy === 'smallest') {
+    const sorted = [...filesList].sort((a, b) => (Number(a.size) || 0) - (Number(b.size) || 0));
+    return [{ title: 'Files by Size (Smallest First)', timestamp: 0, items: sorted }];
+  }
+  if (sortBy === 'name') {
+    const sorted = [...filesList].sort((a, b) => (a.fileName || '').localeCompare(b.fileName || ''));
+    return [{ title: 'Alphabetical Order (A to Z)', timestamp: 0, items: sorted }];
+  }
+
   const groups = {};
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -148,7 +165,21 @@ function groupFilesByTimeline(filesList) {
     groups[sectionTitle].items.push(file);
   });
 
-  return Object.values(groups).sort((a, b) => b.timestamp - a.timestamp);
+  const sections = Object.values(groups);
+  if (sortBy === 'oldest') {
+    sections.sort((a, b) => a.timestamp - b.timestamp);
+    sections.forEach((s) => {
+      s.items.sort((a, b) => new Date(a.createdAt || a.uploadDate || 0) - new Date(b.createdAt || b.uploadDate || 0));
+    });
+  } else {
+    // Default 'newest'
+    sections.sort((a, b) => b.timestamp - a.timestamp);
+    sections.forEach((s) => {
+      s.items.sort((a, b) => new Date(b.createdAt || b.uploadDate || 0) - new Date(a.createdAt || a.uploadDate || 0));
+    });
+  }
+
+  return sections;
 }
 
 const AUTH_TOKEN_KEY = 'telephotos_vault_token';
@@ -171,6 +202,8 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all'); // 'all', 'images', 'videos', 'audio', 'documents'
   const [gridMode, setGridMode] = useState('grid'); // 'grid' (square Google Photos tiles) vs 'columns' (masonry flow)
+  const [sortBy, setSortBy] = useState('newest'); // 'newest' | 'oldest' | 'largest' | 'smallest' | 'name'
+  const [showBackToTop, setShowBackToTop] = useState(false);
 
   const [isDragging, setIsDragging] = useState(false);
 
@@ -462,6 +495,62 @@ export default function App() {
     }
   };
 
+  // Full-window drag & drop listeners for smooth desktop uploads
+  useEffect(() => {
+    let dragCounter = 0;
+
+    const handleWindowDragEnter = (e) => {
+      e.preventDefault();
+      dragCounter++;
+      if (e.dataTransfer?.types?.includes('Files')) {
+        setIsDragging(true);
+      }
+    };
+
+    const handleWindowDragLeave = (e) => {
+      e.preventDefault();
+      dragCounter--;
+      if (dragCounter <= 0) {
+        setIsDragging(false);
+        dragCounter = 0;
+      }
+    };
+
+    const handleWindowDragOver = (e) => {
+      e.preventDefault();
+    };
+
+    const handleWindowDrop = (e) => {
+      e.preventDefault();
+      dragCounter = 0;
+      setIsDragging(false);
+      if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+        handleUploadFiles(e.dataTransfer.files);
+      }
+    };
+
+    window.addEventListener('dragenter', handleWindowDragEnter);
+    window.addEventListener('dragleave', handleWindowDragLeave);
+    window.addEventListener('dragover', handleWindowDragOver);
+    window.addEventListener('drop', handleWindowDrop);
+
+    return () => {
+      window.removeEventListener('dragenter', handleWindowDragEnter);
+      window.removeEventListener('dragleave', handleWindowDragLeave);
+      window.removeEventListener('dragover', handleWindowDragOver);
+      window.removeEventListener('drop', handleWindowDrop);
+    };
+  }, []);
+
+  // Back to Top scroll listener
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowBackToTop(window.scrollY > 350);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   /**
    * Tracked download with live speed monitoring
    */
@@ -568,8 +657,8 @@ export default function App() {
   }, [files, searchQuery, activeTab]);
 
   const timelineSections = useMemo(() => {
-    return groupFilesByTimeline(filteredFiles);
-  }, [filteredFiles]);
+    return groupFilesByTimeline(filteredFiles, sortBy);
+  }, [filteredFiles, sortBy]);
 
   // Aggregate statistics across categories
   const stats = useMemo(() => {
@@ -733,11 +822,26 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col text-slate-800 antialiased selection:bg-blue-500 selection:text-white">
-      {/* Toast Notification */}
+    <div className="min-h-screen bg-slate-50 flex flex-col text-slate-800 antialiased selection:bg-blue-500 selection:text-white pb-20 sm:pb-10">
+      {/* Full-Window Drag and Drop Active Overlay */}
+      {isDragging && (
+        <div className="fixed inset-0 z-50 bg-blue-600/85 backdrop-blur-md flex flex-col items-center justify-center text-white pointer-events-none animate-in fade-in duration-200">
+          <div className="p-8 sm:p-12 rounded-3xl bg-white/10 border-2 border-dashed border-white/60 flex flex-col items-center max-w-md text-center shadow-2xl scale-105 transition-transform mx-4">
+            <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center mb-4 animate-bounce shadow-lg">
+              <Upload className="w-10 h-10 text-white" />
+            </div>
+            <h2 className="text-2xl font-bold mb-2">Drop to Upload</h2>
+            <p className="text-sm text-blue-100">
+              Release files anywhere to stream directly to your private Telegram MTProto cloud storage.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification (Mobile-Friendly Centered) */}
       {toast && (
         <div
-          className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl text-white transition-all transform animate-in slide-in-from-bottom-5 duration-300 ${
+          className={`fixed bottom-8 sm:bottom-6 left-1/2 -translate-x-1/2 sm:left-auto sm:right-6 sm:translate-x-0 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl text-white transition-all transform animate-in slide-in-from-bottom-5 duration-300 max-w-[92vw] sm:max-w-md ${
             toast.type === 'error' ? 'bg-rose-600' : 'bg-slate-900'
           }`}
         >
@@ -756,255 +860,324 @@ export default function App() {
         </div>
       )}
 
-      {/* Top Navbar: Google Photos Aesthetic */}
-      <header className="sticky top-0 z-30 bg-white/85 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-8 py-3.5 flex items-center justify-between gap-4">
+      {/* Top Navbar: Modern Frosted Glass Aesthetic */}
+      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200/80 px-4 sm:px-8 py-3 flex items-center justify-between gap-3 shadow-xs">
         {/* Logo and Identity */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-400 flex items-center justify-center text-white shadow-md shadow-blue-500/25">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-500 flex items-center justify-center text-white shadow-md shadow-blue-500/25 ring-2 ring-blue-500/20 shrink-0">
             <HardDrive className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-bold tracking-tight text-slate-900">
+              <h1 className="text-lg font-extrabold tracking-tight bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 bg-clip-text text-transparent">
                 TelePhotos
               </h1>
-              <span className="px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase bg-blue-100 text-blue-700 rounded-full flex items-center gap-1">
-                <Zap className="w-3 h-3 text-blue-600" /> Universal MTProto
+              <span className="hidden xs:flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase bg-blue-50 text-blue-600 border border-blue-200/60 rounded-full">
+                <Zap className="w-3 h-3 text-blue-600" /> MTProto
               </span>
             </div>
-            <p className="text-xs text-slate-500 hidden sm:block">
-              Photos, Videos, Audio, PDFs & Documents on Telegram Cloud
+            <p className="text-[11px] text-slate-400 font-medium hidden sm:block">
+              Telegram Cloud • Infinite Free Storage
             </p>
           </div>
         </div>
 
-        {/* Search Bar */}
+        {/* Search Bar on Desktop */}
         <div className="relative max-w-md w-full hidden md:block">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Search photos, videos, music, PDFs, docs..."
+            placeholder="Search photos, videos, music, PDFs..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 text-sm bg-slate-100/90 border border-transparent rounded-full focus:bg-white focus:border-blue-500 focus:outline-none transition-all placeholder:text-slate-400"
+            className="w-full pl-10 pr-9 py-2 text-sm bg-slate-100/90 hover:bg-slate-100 border border-transparent rounded-full focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 focus:outline-none transition-all placeholder:text-slate-400 font-normal"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full"
             >
               <X className="w-4 h-4" />
             </button>
           )}
         </div>
 
-        {/* Header Actions & Stats */}
-        <div className="flex items-center gap-2 sm:gap-4">
-          <div className="hidden lg:flex items-center gap-3 text-xs text-slate-600 bg-slate-100 px-3.5 py-1.5 rounded-xl border border-slate-200">
-            <span>
-              <strong>{stats.totalCount}</strong> items
-            </span>
-            <span className="text-slate-300">•</span>
-            <span>
-              <strong>{formatBytes(stats.totalBytes)}</strong> stored
-            </span>
-          </div>
-
+        {/* Header Actions */}
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={fetchGallery}
             disabled={loading}
             title="Refresh gallery"
-            className="p-2 text-slate-600 hover:text-blue-600 hover:bg-slate-100 rounded-xl transition-colors"
+            className="p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 active:scale-95 rounded-xl transition-all border border-transparent hover:border-blue-100"
           >
-            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin text-blue-600' : ''}`} />
+            <RefreshCw className={`w-4 h-4 sm:w-5 sm:h-5 ${loading ? 'animate-spin text-blue-600' : ''}`} />
           </button>
 
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={!!uploadStatus}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-95 rounded-full shadow-md shadow-blue-500/25 transition-all"
+            className="flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:scale-95 rounded-full shadow-md shadow-blue-500/25 transition-all"
           >
             <Upload className="w-4 h-4" />
-            <span className="hidden sm:inline">Upload Files</span>
+            <span className="hidden sm:inline">Upload</span>
           </button>
 
           <button
             onClick={() => handleLock('Vault locked successfully.')}
             title="Lock Vault"
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:text-rose-600 bg-slate-100 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-full transition-all active:scale-95"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-600 hover:text-rose-600 bg-slate-100 hover:bg-rose-50 border border-slate-200/80 hover:border-rose-200 rounded-full transition-all active:scale-95"
           >
-            <Lock className="w-3.5 h-3.5 text-slate-500" />
+            <Lock className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Lock</span>
           </button>
         </div>
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-8 flex flex-col gap-6">
-        {/* Upload Zone / Real-time 2-Phase Progress Monitor */}
-        <div
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          onClick={() => !uploadStatus && fileInputRef.current?.click()}
-          className={`relative border-2 border-dashed rounded-3xl p-6 sm:p-8 text-center transition-all duration-200 ${
-            isDragging
-              ? 'border-blue-500 bg-blue-50/80 scale-[1.01]'
-              : uploadStatus
-              ? 'border-blue-300 bg-white shadow-md'
-              : 'border-slate-300 hover:border-blue-400 bg-white shadow-sm cursor-pointer'
-          }`}
-        >
-          {/* Universal file input (Accepts ANY file) */}
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={(e) => handleUploadFiles(e.target.files)}
-            multiple
-            className="hidden"
-          />
+      <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-8 flex flex-col gap-5 sm:gap-6">
+        {/* Hidden Universal File Input */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={(e) => handleUploadFiles(e.target.files)}
+          multiple
+          className="hidden"
+        />
 
-          {uploadStatus ? (
-            /* ACCURATE TWO-PHASE UPLOAD DASHBOARD */
-            <div className="max-w-xl mx-auto flex flex-col items-center">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700 animate-pulse">
-                  {uploadStatus.phase === 'client'
-                    ? 'Phase 1 of 2: Buffering to Server'
-                    : 'Phase 2 of 2: Streaming to Telegram MTProto'}
-                </span>
-                <span className="text-xs text-slate-500 font-medium">
-                  {formatBytes(uploadStatus.totalSize)}
-                </span>
+        {/* Interactive Overview & Storage Summary Chips */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+          {/* Photos Card */}
+          <div
+            onClick={() => setActiveTab('images')}
+            className={`p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between group ${
+              activeTab === 'images'
+                ? 'bg-blue-50/90 border-blue-400 ring-2 ring-blue-500/20 shadow-xs'
+                : 'bg-white border-slate-200/80 hover:border-blue-300 hover:shadow-xs'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+                <ImageIcon className="w-5 h-5" />
               </div>
-
-              <h3 className="font-bold text-slate-900 text-base sm:text-lg mb-1 truncate max-w-md">
-                {uploadStatus.fileName}
-              </h3>
-
-              {/* Real-time 2-Phase Progress Display */}
-              <div className="w-full bg-slate-100 rounded-2xl p-4 sm:p-5 mt-3 border border-slate-200/80 text-left">
-                {/* Step 1: Client to Server Buffer */}
-                <div className="mb-4">
-                  <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
-                    <span className="flex items-center gap-1.5 text-slate-700">
-                      {uploadStatus.clientPercent === 100 ? (
-                        <Check className="w-4 h-4 text-emerald-500" />
-                      ) : (
-                        <Upload className="w-3.5 h-3.5 text-blue-600 animate-bounce" />
-                      )}
-                      1. Client ➔ Local Server Buffer
-                    </span>
-                    <span className="text-blue-600 font-mono">
-                      {uploadStatus.clientPercent}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
-                    <div
-                      className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
-                      style={{ width: `${uploadStatus.clientPercent}%` }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1">
-                    <span className="flex items-center gap-1">
-                      <Gauge className="w-3 h-3 text-slate-400" /> Speed:{' '}
-                      <strong className="text-slate-700 font-mono">
-                        {uploadStatus.clientSpeed}
-                      </strong>
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-slate-400" /> ETA:{' '}
-                      <strong className="text-slate-700 font-mono">
-                        {uploadStatus.clientEta}
-                      </strong>
-                    </span>
-                  </div>
-                </div>
-
-                {/* Step 2: Server to Telegram MTProto Storage */}
-                <div>
-                  <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
-                    <span className="flex items-center gap-1.5 text-slate-700">
-                      {uploadStatus.telegramPercent === 100 ? (
-                        <Check className="w-4 h-4 text-emerald-500" />
-                      ) : uploadStatus.phase === 'telegram' ? (
-                        <Zap className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
-                      ) : (
-                        <Clock className="w-3.5 h-3.5 text-slate-400" />
-                      )}
-                      2. Server ➔ Telegram MTProto Cloud Stream
-                    </span>
-                    <span className="text-indigo-600 font-mono">
-                      {uploadStatus.telegramPercent}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
-                    <div
-                      className="bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 h-2.5 rounded-full transition-all duration-300"
-                      style={{ width: `${uploadStatus.telegramPercent}%` }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1">
-                    <span className="flex items-center gap-1">
-                      <Gauge className="w-3 h-3 text-slate-400" /> Telegram Speed:{' '}
-                      <strong className="text-indigo-600 font-mono">
-                        {uploadStatus.telegramSpeed}
-                      </strong>
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-slate-400" /> ETA:{' '}
-                      <strong className="text-indigo-600 font-mono">
-                        {uploadStatus.telegramEta || 'Estimating...'}
-                      </strong>
-                    </span>
-                  </div>
-                </div>
+              <div>
+                <p className="text-[10px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Photos</p>
+                <p className="text-base sm:text-lg font-bold text-slate-900 leading-tight">{stats.imageCount}</p>
               </div>
             </div>
-          ) : (
-            /* DEFAULT DROPZONE STATE */
-            <div className="flex flex-col items-center gap-2">
-              <div
-                className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${
-                  isDragging ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600'
-                }`}
-              >
-                <Upload className="w-7 h-7" />
+            {activeTab === 'images' && (
+              <span className="w-2 h-2 rounded-full bg-blue-600 ring-4 ring-blue-100 shrink-0" />
+            )}
+          </div>
+
+          {/* Videos Card */}
+          <div
+            onClick={() => setActiveTab('videos')}
+            className={`p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between group ${
+              activeTab === 'videos'
+                ? 'bg-purple-50/90 border-purple-400 ring-2 ring-purple-500/20 shadow-xs'
+                : 'bg-white border-slate-200/80 hover:border-purple-300 hover:shadow-xs'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+                <Film className="w-5 h-5" />
               </div>
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 mt-1">
-                Drag & drop any photos, videos, music, PDFs, or files here
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-500 max-w-lg">
-                Upload up to 2GB per file. Files are stored uncompressed in your private Telegram
-                channel via direct MTProto streaming with PostgreSQL metadata.
-              </p>
-              <div className="flex flex-wrap items-center justify-center gap-3 mt-1 text-xs font-medium text-slate-400">
-                <span className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
-                  <ImageIcon className="w-3.5 h-3.5" /> Photos
-                </span>
-                <span className="flex items-center gap-1 text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md">
-                  <Film className="w-3.5 h-3.5" /> Videos
-                </span>
-                <span className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
-                  <Music className="w-3.5 h-3.5" /> Music & Audio
-                </span>
-                <span className="flex items-center gap-1 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">
-                  <FileText className="w-3.5 h-3.5" /> PDFs & Documents
-                </span>
+              <div>
+                <p className="text-[10px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Videos</p>
+                <p className="text-base sm:text-lg font-bold text-slate-900 leading-tight">{stats.videoCount}</p>
               </div>
             </div>
-          )}
+            {activeTab === 'videos' && (
+              <span className="w-2 h-2 rounded-full bg-purple-600 ring-4 ring-purple-100 shrink-0" />
+            )}
+          </div>
+
+          {/* Docs & Audio Card */}
+          <div
+            onClick={() => setActiveTab(activeTab === 'documents' ? 'audio' : 'documents')}
+            className={`p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between group ${
+              activeTab === 'documents' || activeTab === 'audio'
+                ? 'bg-amber-50/90 border-amber-400 ring-2 ring-amber-500/20 shadow-xs'
+                : 'bg-white border-slate-200/80 hover:border-amber-300 hover:shadow-xs'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+                <FileText className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[10px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Docs & Audio</p>
+                <p className="text-base sm:text-lg font-bold text-slate-900 leading-tight">{stats.docCount + stats.audioCount}</p>
+              </div>
+            </div>
+            {(activeTab === 'documents' || activeTab === 'audio') && (
+              <span className="w-2 h-2 rounded-full bg-amber-600 ring-4 ring-amber-100 shrink-0" />
+            )}
+          </div>
+
+          {/* Cloud Storage Card */}
+          <div
+            onClick={() => setActiveTab('all')}
+            className={`p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between group ${
+              activeTab === 'all'
+                ? 'bg-indigo-50/90 border-indigo-400 ring-2 ring-indigo-500/20 shadow-xs'
+                : 'bg-white border-slate-200/80 hover:border-indigo-300 hover:shadow-xs'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+                <HardDrive className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[10px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Storage Used</p>
+                <p className="text-base sm:text-lg font-bold text-slate-900 leading-tight">{formatBytes(stats.totalBytes)}</p>
+              </div>
+            </div>
+            {activeTab === 'all' && (
+              <span className="w-2 h-2 rounded-full bg-indigo-600 ring-4 ring-indigo-100 shrink-0" />
+            )}
+          </div>
         </div>
 
-        {/* Gallery Controls & Category Pills */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
-          {/* Category Tabs: Photos, Videos, Audio, PDFs & Docs (Horizontal Touch Scroll for Mobile) */}
-          <div className="flex items-center gap-1.5 p-1 bg-slate-200/80 rounded-2xl overflow-x-auto no-scrollbar max-w-full">
+        {/* Upload Zone: Compact & Streamlined Banner / Active Progress */}
+        {uploadStatus ? (
+          /* ACCURATE TWO-PHASE UPLOAD DASHBOARD */
+          <div className="bg-white border border-blue-200 rounded-3xl p-5 sm:p-6 shadow-md text-center max-w-2xl mx-auto w-full animate-in fade-in duration-200">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <span className="px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700 animate-pulse">
+                {uploadStatus.phase === 'client'
+                  ? 'Phase 1 of 2: Buffering to Server'
+                  : 'Phase 2 of 2: Streaming to Telegram MTProto'}
+              </span>
+              <span className="text-xs text-slate-500 font-medium">
+                {formatBytes(uploadStatus.totalSize)}
+              </span>
+            </div>
+
+            <h3 className="font-bold text-slate-900 text-base sm:text-lg mb-1 truncate max-w-md mx-auto">
+              {uploadStatus.fileName}
+            </h3>
+
+            {/* Real-time 2-Phase Progress Display */}
+            <div className="w-full bg-slate-50 rounded-2xl p-4 sm:p-5 mt-3 border border-slate-200/80 text-left">
+              {/* Step 1: Client to Server Buffer */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
+                  <span className="flex items-center gap-1.5 text-slate-700">
+                    {uploadStatus.clientPercent === 100 ? (
+                      <Check className="w-4 h-4 text-emerald-500" />
+                    ) : (
+                      <Upload className="w-3.5 h-3.5 text-blue-600 animate-bounce" />
+                    )}
+                    1. Client ➔ Local Server Buffer
+                  </span>
+                  <span className="text-blue-600 font-mono">
+                    {uploadStatus.clientPercent}%
+                  </span>
+                </div>
+                <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                  <div
+                    className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                    style={{ width: `${uploadStatus.clientPercent}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1">
+                  <span className="flex items-center gap-1">
+                    <Gauge className="w-3 h-3 text-slate-400" /> Speed:{' '}
+                    <strong className="text-slate-700 font-mono">
+                      {uploadStatus.clientSpeed}
+                    </strong>
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-slate-400" /> ETA:{' '}
+                    <strong className="text-slate-700 font-mono">
+                      {uploadStatus.clientEta}
+                    </strong>
+                  </span>
+                </div>
+              </div>
+
+              {/* Step 2: Server to Telegram MTProto Storage */}
+              <div>
+                <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
+                  <span className="flex items-center gap-1.5 text-slate-700">
+                    {uploadStatus.telegramPercent === 100 ? (
+                      <Check className="w-4 h-4 text-emerald-500" />
+                    ) : uploadStatus.phase === 'telegram' ? (
+                      <Zap className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+                    ) : (
+                      <Clock className="w-3.5 h-3.5 text-slate-400" />
+                    )}
+                    2. Server ➔ Telegram MTProto Cloud Stream
+                  </span>
+                  <span className="text-indigo-600 font-mono">
+                    {uploadStatus.telegramPercent}%
+                  </span>
+                </div>
+                <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                  <div
+                    className="bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 h-2.5 rounded-full transition-all duration-300"
+                    style={{ width: `${uploadStatus.telegramPercent}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1">
+                  <span className="flex items-center gap-1">
+                    <Gauge className="w-3 h-3 text-slate-400" /> Telegram Speed:{' '}
+                    <strong className="text-indigo-600 font-mono">
+                      {uploadStatus.telegramSpeed}
+                    </strong>
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-slate-400" /> ETA:{' '}
+                    <strong className="text-indigo-600 font-mono">
+                      {uploadStatus.telegramEta || 'Estimating...'}
+                    </strong>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* STREAMLINED ELEGANT UPLOAD BAR (Compact & Unobtrusive) */
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className="group relative rounded-2xl p-4 sm:p-5 transition-all duration-200 cursor-pointer border-2 border-dashed border-slate-200/90 hover:border-blue-400 bg-white hover:bg-blue-50/20 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs hover:shadow-md"
+          >
+            <div className="flex items-center gap-3 sm:gap-4 text-center sm:text-left">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white flex items-center justify-center shrink-0 transition-colors duration-200">
+                <Upload className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
+                  Upload photos, videos, or documents
+                </p>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Click to browse or drag & drop files • Direct MTProto streaming up to 2GB per file
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="px-4 py-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 group-hover:bg-blue-600 group-hover:text-white rounded-xl transition-all shrink-0 flex items-center gap-1.5 shadow-2xs"
+            >
+              <Upload className="w-3.5 h-3.5" /> Select Files
+            </button>
+          </div>
+        )}
+
+        {/* Sticky Controls Bar: Category Pills + Search + Sort + View Switcher */}
+        <div className="sticky top-[58px] sm:top-[65px] z-20 bg-slate-50/95 backdrop-blur-xl py-2.5 px-0.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/70">
+          {/* Category Tabs: Photos, Videos, Audio, PDFs & Docs */}
+          <div className="flex items-center gap-1.5 p-1 bg-slate-200/70 rounded-2xl overflow-x-auto no-scrollbar max-w-full">
             <button
               onClick={() => setActiveTab('all')}
               className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                 activeTab === 'all'
-                  ? 'bg-white text-slate-900 shadow-sm'
+                  ? 'bg-slate-900 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -1014,46 +1187,46 @@ export default function App() {
               onClick={() => setActiveTab('images')}
               className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 activeTab === 'images'
-                  ? 'bg-white text-slate-900 shadow-sm'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <ImageIcon className="w-3.5 h-3.5 text-blue-600" /> Photos ({stats.imageCount})
+              <ImageIcon className="w-3.5 h-3.5" /> Photos ({stats.imageCount})
             </button>
             <button
               onClick={() => setActiveTab('videos')}
               className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 activeTab === 'videos'
-                  ? 'bg-white text-slate-900 shadow-sm'
+                  ? 'bg-purple-600 text-white shadow-md shadow-purple-600/25'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <Film className="w-3.5 h-3.5 text-purple-600" /> Videos ({stats.videoCount})
+              <Film className="w-3.5 h-3.5" /> Videos ({stats.videoCount})
             </button>
             <button
               onClick={() => setActiveTab('audio')}
               className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 activeTab === 'audio'
-                  ? 'bg-white text-slate-900 shadow-sm'
+                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/25'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <Music className="w-3.5 h-3.5 text-emerald-600" /> Audio ({stats.audioCount})
+              <Music className="w-3.5 h-3.5" /> Audio ({stats.audioCount})
             </button>
             <button
               onClick={() => setActiveTab('documents')}
               className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 activeTab === 'documents'
-                  ? 'bg-white text-slate-900 shadow-sm'
+                  ? 'bg-amber-600 text-white shadow-md shadow-amber-600/25'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <FileText className="w-3.5 h-3.5 text-amber-600" /> Documents ({stats.docCount})
+              <FileText className="w-3.5 h-3.5" /> Docs ({stats.docCount})
             </button>
           </div>
 
-          {/* Controls: Mobile Search Bar & Layout Switcher */}
-          <div className="flex items-center gap-2 w-full md:w-auto">
+          {/* Controls: Search, Sort Dropdown & Layout Switcher */}
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             {/* Search bar on mobile */}
             <div className="relative flex-1 md:hidden">
               <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -1062,20 +1235,45 @@ export default function App() {
                 placeholder="Search media..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500"
+                className="w-full pl-9 pr-8 py-1.5 text-xs bg-white border border-slate-200/90 rounded-xl focus:outline-none focus:border-blue-500 shadow-2xs"
               />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
-            {/* Layout Density Switcher: Google Photos Square Grid vs Masonry Flow */}
-            <div className="flex items-center bg-slate-200/80 p-0.5 rounded-xl shrink-0">
+            {/* Sort Selector Dropdown */}
+            <div className="flex items-center bg-white border border-slate-200/80 rounded-xl px-2 py-1 shadow-2xs shrink-0">
+              <ArrowUpDown className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="bg-transparent text-xs font-semibold text-slate-700 pl-1.5 pr-1 py-0.5 focus:outline-none cursor-pointer"
+                title="Sort items"
+              >
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="largest">Largest Size</option>
+                <option value="smallest">Smallest Size</option>
+                <option value="name">Name (A-Z)</option>
+              </select>
+            </div>
+
+            {/* Layout Density Switcher: Square Grid vs Masonry Flow */}
+            <div className="flex items-center bg-slate-200/80 p-0.5 rounded-xl shrink-0 shadow-2xs">
               <button
                 onClick={() => setGridMode('grid')}
                 className={`p-1.5 rounded-lg transition-all ${
                   gridMode === 'grid'
-                    ? 'bg-white text-blue-600 shadow-sm'
+                    ? 'bg-white text-blue-600 shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
-                title="Square Grid view (Google Photos 3-column mobile)"
+                title="Google Photos Square Grid (3 columns on mobile)"
               >
                 <LayoutGrid className="w-4 h-4" />
               </button>
@@ -1083,7 +1281,7 @@ export default function App() {
                 onClick={() => setGridMode('columns')}
                 className={`p-1.5 rounded-lg transition-all ${
                   gridMode === 'columns'
-                    ? 'bg-white text-blue-600 shadow-sm'
+                    ? 'bg-white text-blue-600 shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
                 title="Masonry Flow view"
@@ -1119,7 +1317,14 @@ export default function App() {
                 ? `No items match the search query "${searchQuery}".`
                 : 'Upload your photos, videos, music files, or PDFs above to store them in your private Telegram channel.'}
             </p>
-            {!searchQuery && (
+            {searchQuery ? (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="px-4 py-2 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors"
+              >
+                Clear Search
+              </button>
+            ) : (
               <button
                 onClick={() => fileInputRef.current?.click()}
                 className="px-4 py-2 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors"
@@ -1133,8 +1338,8 @@ export default function App() {
           <div className="flex flex-col gap-8">
             {timelineSections.map((section) => (
               <div key={section.title} className="flex flex-col gap-3">
-                {/* Sticky Section Header */}
-                <div className="sticky top-[69px] z-10 bg-slate-50/90 backdrop-blur-md py-2 flex items-center justify-between border-b border-slate-200/60">
+                {/* Section Header */}
+                <div className="py-2.5 flex items-center justify-between border-b border-slate-200/60">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-blue-600" />
                     <h3 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
@@ -1180,11 +1385,11 @@ export default function App() {
                               preload="metadata"
                               muted
                               playsInline
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 pointer-events-none"
                             />
                             <div className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover:bg-black/45 transition-colors">
-                              <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/90 backdrop-blur-sm text-slate-900 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                                <Play className="w-4 h-4 sm:w-5 sm:h-5 fill-slate-900 ml-0.5" />
+                              <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-full bg-white/90 backdrop-blur-sm text-slate-900 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                                <Play className="w-3.5 h-3.5 sm:w-5 sm:h-5 fill-slate-900 ml-0.5" />
                               </div>
                             </div>
                             <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-md flex items-center gap-1">
@@ -1203,8 +1408,18 @@ export default function App() {
                               src={streamUrl}
                               alt={file.fileName}
                               loading="lazy"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                if (e.target.nextSibling) {
+                                  e.target.nextSibling.style.display = 'flex';
+                                }
+                              }}
                               className={`w-full ${isSquare ? 'h-full object-cover' : 'h-auto object-cover'} group-hover:scale-105 transition-transform duration-300`}
                             />
+                            <div className="hidden absolute inset-0 bg-slate-800 text-slate-400 flex-col items-center justify-center text-[10px] p-2 text-center">
+                              <ImageIcon className="w-5 h-5 text-slate-500 mb-1" />
+                              <span className="truncate max-w-full">{file.fileName}</span>
+                            </div>
                           </div>
                         )}
 
@@ -1291,6 +1506,17 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {/* Floating Back to Top Button */}
+      {showBackToTop && (
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="fixed bottom-6 left-6 z-40 p-3 rounded-full bg-slate-900/85 hover:bg-slate-900 text-white backdrop-blur-md shadow-xl transition-all duration-200 active:scale-90 flex items-center justify-center border border-white/10"
+          title="Back to Top"
+        >
+          <ChevronUp className="w-5 h-5" />
+        </button>
+      )}
 
       {/* Mobile Floating Action Button (FAB) for Quick 1-Tap Uploads */}
       <button
