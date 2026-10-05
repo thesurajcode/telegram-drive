@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
   X,
-  Lock,
   Key,
   Mail,
   ShieldCheck,
@@ -12,8 +11,6 @@ import {
   Eye,
   EyeOff,
   Send,
-  ArrowRight,
-  Info,
 } from 'lucide-react';
 
 export default function PasswordManagerModal({
@@ -48,7 +45,7 @@ export default function PasswordManagerModal({
   const [errorMsg, setErrorMsg] = useState('');
   const [successNotice, setSuccessNotice] = useState('');
   const [otpSent, setOtpSent] = useState(false);
-  const [targetEmail, setTargetEmail] = useState('Registered Owner Email');
+  const [targetEmail, setTargetEmail] = useState('');
   const [cooldown, setCooldown] = useState(0);
 
   // Cooldown countdown timer
@@ -77,7 +74,7 @@ export default function PasswordManagerModal({
   if (!isOpen) return null;
 
   /**
-   * Request OTP dispatch strictly to surajchandan09@gmail.com
+   * Request OTP dispatch strictly to registered email
    */
   const handleRequestOtp = async () => {
     setErrorMsg('');
@@ -92,15 +89,13 @@ export default function PasswordManagerModal({
         if (res.data.targetEmail) {
           setTargetEmail(res.data.targetEmail);
         }
-        setSuccessNotice(
-          res.data.message || `OTP code dispatched! Check your Gmail inbox at ${res.data.targetEmail || 'surajchandan09@gmail.com'}.`
-        );
+        setSuccessNotice('OTP code sent to your Gmail inbox.');
         showToast(res.data.isSimulated ? 'OTP code generated!' : 'OTP dispatched to your Gmail!', 'success');
       }
     } catch (err) {
       console.error('OTP request error:', err);
       const serverErr = err.response?.data?.error || err.response?.data?.details;
-      setErrorMsg(serverErr || 'Failed to dispatch email. Click the "Master Admin Key" tab above to reset instantly without email.');
+      setErrorMsg(serverErr || 'Failed to dispatch email. Switch to Master Admin Key tab to reset without email.');
     } finally {
       setIsSendingOtp(false);
     }
@@ -125,12 +120,12 @@ export default function PasswordManagerModal({
 
     if (activeTab === 'otp') {
       if (!otpCode.trim() || otpCode.trim().length !== 6) {
-        setErrorMsg('Please enter the 6-digit verification code sent to your email.');
+        setErrorMsg('Please enter the 6-digit verification code.');
         return;
       }
     } else if (activeTab === 'master') {
       if (!masterPassword.trim()) {
-        setErrorMsg('Please enter the Master Admin Password.');
+        setErrorMsg('Please enter the Master Admin Key.');
         return;
       }
     }
@@ -148,7 +143,7 @@ export default function PasswordManagerModal({
       const res = await axios.post(`${apiBaseUrl}/auth/reset-password`, payload);
 
       if (res.data && res.data.success) {
-        showToast('Vault password changed! All other devices logged out.', 'success');
+        showToast('Password changed! All other sessions revoked.', 'success');
         if (onSuccess) {
           onSuccess(res.data.message, res.data.token);
         }
@@ -156,7 +151,7 @@ export default function PasswordManagerModal({
       }
     } catch (err) {
       console.error('Password reset failed:', err);
-      setErrorMsg(err.response?.data?.error || 'Failed to reset password. Please check your credentials.');
+      setErrorMsg(err.response?.data?.error || 'Failed to reset password. Check your credentials.');
     } finally {
       setIsSubmitting(false);
     }
@@ -170,7 +165,7 @@ export default function PasswordManagerModal({
     setErrorMsg('');
 
     if (!currentPassword.trim()) {
-      setErrorMsg('Please enter your current vault password.');
+      setErrorMsg('Please enter your current password.');
       return;
     }
 
@@ -193,7 +188,7 @@ export default function PasswordManagerModal({
       });
 
       if (res.data && res.data.success) {
-        showToast('Vault password updated! All other devices logged out.', 'success');
+        showToast('Password updated! All other sessions revoked.', 'success');
         if (onSuccess) {
           onSuccess(res.data.message, res.data.token);
         }
@@ -208,47 +203,47 @@ export default function PasswordManagerModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
-      <div className="relative w-full max-w-md my-auto bg-slate-900 border border-slate-800/90 rounded-3xl p-5 sm:p-7 shadow-[0_25px_70px_-15px_rgba(0,0,0,0.85)] flex flex-col text-slate-100 z-10 max-h-[92dvh] overflow-y-auto no-scrollbar">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150 overflow-y-auto">
+      <div className="relative w-full max-w-sm sm:max-w-md my-auto bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xl flex flex-col text-slate-100 z-10 max-h-[92dvh] overflow-y-auto">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 sm:top-5 sm:right-5 p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors z-20"
-          title="Close modal"
+          className="absolute top-3.5 right-3.5 p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors z-20"
+          title="Close"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 h-4" />
         </button>
 
         {/* Modal Header */}
-        <div className="flex items-center gap-3.5 mb-3.5 pr-8">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-400 flex items-center justify-center text-white shadow-lg shadow-blue-500/25 shrink-0">
-            <Key className="w-5 h-5" />
+        <div className="flex items-center gap-2.5 mb-3 pr-6">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/25 shrink-0">
+            <Key className="w-4 h-4" />
           </div>
-          <div>
-            <h3 className="text-lg sm:text-xl font-extrabold text-white tracking-tight">
+          <div className="min-w-0">
+            <h3 className="text-base font-bold text-white tracking-tight truncate">
               {currentMode === 'reset' ? 'Reset Vault Password' : 'Change Vault Password'}
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-[11px] text-slate-400 truncate">
               {currentMode === 'reset'
-                ? 'Authorize with Email OTP or Master Admin Key'
-                : 'Update the daily access password for this vault'}
+                ? 'Verify with Email OTP or Master Admin Key'
+                : 'Update your daily vault access password'}
             </p>
           </div>
         </div>
 
-        {/* Mode = 'reset': Tabs for OTP vs Master Admin Password */}
+        {/* Reset Mode Tabs: Clean, Compact Segmented Control */}
         {currentMode === 'reset' && (
-          <div className="grid grid-cols-2 p-1 bg-slate-950 border border-slate-800 rounded-2xl mb-3 text-xs font-bold">
+          <div className="grid grid-cols-2 p-0.5 bg-slate-950 border border-slate-800 rounded-xl mb-3 text-xs font-semibold">
             <button
               type="button"
               onClick={() => {
                 setActiveTab('otp');
                 setErrorMsg('');
               }}
-              className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl transition-all ${
+              className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg transition-all ${
                 activeTab === 'otp'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
               <Mail className="w-3.5 h-3.5" />
@@ -260,151 +255,110 @@ export default function PasswordManagerModal({
                 setActiveTab('master');
                 setErrorMsg('');
               }}
-              className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl transition-all ${
+              className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg transition-all ${
                 activeTab === 'master'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
               <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Master Admin Key</span>
+              <span>Master Key</span>
             </button>
           </div>
         )}
 
-        {/* Compact Instant Device Logout Info Notice */}
-        <div className="mb-3 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 text-[11px] leading-tight">
-          <Info className="w-3.5 h-3.5 shrink-0 text-blue-400" />
-          <span>
-            <strong>Instant Logout:</strong> Changing password kicks out all other active sessions.
-          </span>
-        </div>
-
-        {/* Feedback Alerts */}
+        {/* Error / Success Feedback */}
         {errorMsg && (
-          <div className="mb-3 flex items-center gap-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs">
+          <div className="mb-2.5 flex items-center gap-2 p-2 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs">
             <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{errorMsg}</span>
+            <span className="leading-tight">{errorMsg}</span>
           </div>
         )}
 
         {successNotice && (
-          <div className="mb-3 flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs">
+          <div className="mb-2.5 flex items-center gap-2 p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs">
             <CheckCircle className="w-4 h-4 shrink-0" />
-            <span>{successNotice}</span>
+            <span className="leading-tight">{successNotice}</span>
           </div>
         )}
 
         {/* Form Body */}
         {currentMode === 'reset' ? (
-          <form onSubmit={handleResetSubmit} className="flex flex-col gap-3">
+          <form onSubmit={handleResetSubmit} className="flex flex-col gap-2.5">
             {activeTab === 'otp' ? (
-              <>
-                {/* OTP Dispatch Card */}
-                <div className="p-3 bg-slate-950/80 border border-slate-800/90 rounded-2xl flex flex-col gap-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">Target Email:</span>
-                    <span className="font-semibold text-blue-400 font-mono text-[11px] sm:text-xs truncate max-w-[200px]">
-                      {targetEmail}
-                    </span>
-                  </div>
-
+              <div>
+                <div className="flex items-center justify-between mb-1 text-xs">
+                  <label className="font-semibold text-slate-300">
+                    6-Digit Verification Code
+                  </label>
                   <button
                     type="button"
                     onClick={handleRequestOtp}
                     disabled={isSendingOtp || cooldown > 0}
-                    className="w-full py-2 px-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 shadow-md shadow-blue-600/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
+                    className="text-blue-400 hover:text-blue-300 font-semibold text-xs flex items-center gap-1 transition-colors disabled:opacity-50 py-0.5 px-1.5 rounded hover:bg-blue-500/10"
                   >
                     {isSendingOtp ? (
                       <>
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                        <span>Sending to Gmail...</span>
+                        <RefreshCw className="w-3 h-3 animate-spin" />
+                        <span>Sending...</span>
                       </>
                     ) : cooldown > 0 ? (
-                      <span>Resend code in {cooldown}s</span>
+                      <span>Resend ({cooldown}s)</span>
                     ) : (
                       <>
-                        <Send className="w-3.5 h-3.5" />
-                        <span>{otpSent ? 'Resend 6-Digit OTP' : 'Send 6-Digit OTP to Gmail'}</span>
+                        <Send className="w-3 h-3" />
+                        <span>{otpSent ? 'Resend Code' : 'Send Code to Gmail'}</span>
                       </>
                     )}
                   </button>
-
-                  <p className="text-[11px] text-slate-400 text-center">
-                    Need instant access?{' '}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveTab('master');
-                        setErrorMsg('');
-                      }}
-                      className="text-amber-400 hover:text-amber-300 font-bold underline"
-                    >
-                      Use Master Admin Key
-                    </button>
+                </div>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                  placeholder="Enter 6-digit code"
+                  className="w-full h-10 px-3 bg-slate-950 border border-slate-800 rounded-xl text-center text-lg font-mono font-bold tracking-[0.3em] text-blue-400 placeholder:text-slate-600 placeholder:tracking-normal placeholder:font-normal placeholder:text-xs focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all shadow-inner"
+                />
+                {otpSent && (
+                  <p className="text-[11px] text-emerald-400 font-medium mt-1 flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3" /> Sent to {targetEmail || 'your Gmail inbox'}
                   </p>
-                </div>
-
-                {/* 6-Digit Code Input */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                      6-Digit Verification Code
-                    </label>
-                    {otpSent && (
-                      <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
-                        <Check className="w-3 h-3" /> Sent to Inbox
-                      </span>
-                    )}
-                  </div>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
-                    value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                    placeholder="••••••"
-                    className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl text-center text-xl font-mono font-bold tracking-[0.4em] text-blue-400 placeholder:text-slate-600 placeholder:tracking-widest focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-inner"
-                  />
-                </div>
-              </>
+                )}
+              </div>
             ) : (
-              /* Master Admin Password Tab */
-              <div className="p-3 bg-slate-950/80 border border-slate-800/90 rounded-2xl flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                    Master Admin Password
-                  </label>
-                  <span className="text-[10px] text-amber-400 font-bold bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">
-                    Zero-Email Recovery
-                  </span>
-                </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Master Admin Key
+                </label>
                 <div className="relative flex items-center">
                   <input
                     type={showMasterPassword ? 'text' : 'password'}
                     value={masterPassword}
                     onChange={(e) => setMasterPassword(e.target.value)}
-                    placeholder="Enter Master Admin Password"
-                    className="w-full pl-3.5 pr-10 py-2 bg-slate-900 border border-slate-800 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-mono"
+                    placeholder="Enter Master Admin Key"
+                    className="w-full h-10 pl-3 pr-9 bg-slate-950 border border-slate-800 rounded-xl text-xs sm:text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 font-mono"
                   />
                   <button
                     type="button"
                     onClick={() => setShowMasterPassword(!showMasterPassword)}
-                    className="absolute right-3 text-slate-400 hover:text-white p-1"
+                    className="absolute right-2.5 text-slate-400 hover:text-white p-1"
+                    tabIndex={-1}
                   >
-                    {showMasterPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showMasterPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                   </button>
                 </div>
-                <p className="text-[11px] text-slate-400">
-                  Permanent key configured in <code className="text-amber-400 font-mono">server/.env</code>. Resets instantly without requiring email.
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Instant recovery key configured on server. No email needed.
                 </p>
               </div>
             )}
 
             {/* New Password & Confirm Password Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-0.5">
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
                   New Password
                 </label>
                 <div className="relative flex items-center">
@@ -413,28 +367,29 @@ export default function PasswordManagerModal({
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Min 4 chars"
-                    className="w-full pl-3 pr-8 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    className="w-full h-9 pl-2.5 pr-8 bg-slate-950 border border-slate-800 rounded-xl text-xs sm:text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
                   />
                   <button
                     type="button"
                     onClick={() => setShowNewPassword(!showNewPassword)}
-                    className="absolute right-2 text-slate-400 hover:text-white p-1"
+                    className="absolute right-2 text-slate-400 hover:text-white p-0.5"
+                    tabIndex={-1}
                   >
-                    {showNewPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    {showNewPassword ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                   </button>
                 </div>
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
                   Confirm Password
                 </label>
                 <input
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Re-enter password"
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                  placeholder="Re-enter"
+                  className="w-full h-9 px-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs sm:text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
                 />
               </div>
             </div>
@@ -443,17 +398,17 @@ export default function PasswordManagerModal({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="mt-1 w-full py-2.5 sm:py-3 px-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] text-white text-xs sm:text-sm font-bold rounded-2xl shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+              className="mt-1.5 w-full h-10 bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 hover:from-blue-500 hover:to-indigo-500 active:scale-[0.99] text-white text-xs sm:text-sm font-bold rounded-xl shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Updating Password...</span>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Updating...</span>
                 </>
               ) : (
                 <>
                   <ShieldCheck className="w-4 h-4" />
-                  <span>Update Password & Revoke Sessions</span>
+                  <span>Update Password</span>
                 </>
               )}
             </button>
@@ -468,16 +423,16 @@ export default function PasswordManagerModal({
                 }}
                 className="text-xs text-slate-400 hover:text-slate-200 text-center py-0.5"
               >
-                &larr; I know my current password
+                &larr; Back to change password
               </button>
             )}
           </form>
         ) : (
           /* Mode = 'change' (inside authenticated vault) */
-          <form onSubmit={handleChangeSubmit} className="flex flex-col gap-3">
+          <form onSubmit={handleChangeSubmit} className="flex flex-col gap-2.5">
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                Current Vault Password
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Current Password
               </label>
               <div className="relative flex items-center">
                 <input
@@ -485,21 +440,22 @@ export default function PasswordManagerModal({
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   placeholder="Enter current password"
-                  className="w-full pl-3.5 pr-10 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                  className="w-full h-10 pl-3 pr-9 bg-slate-950 border border-slate-800 rounded-xl text-xs sm:text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
                 />
                 <button
                   type="button"
                   onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                  className="absolute right-3 text-slate-400 hover:text-white p-1"
+                  className="absolute right-2.5 text-slate-400 hover:text-white p-1"
+                  tabIndex={-1}
                 >
-                  {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showCurrentPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                 </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
                   New Password
                 </label>
                 <div className="relative flex items-center">
@@ -508,28 +464,29 @@ export default function PasswordManagerModal({
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Min 4 chars"
-                    className="w-full pl-3 pr-8 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    className="w-full h-9 pl-2.5 pr-8 bg-slate-950 border border-slate-800 rounded-xl text-xs sm:text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
                   />
                   <button
                     type="button"
                     onClick={() => setShowNewPassword(!showNewPassword)}
-                    className="absolute right-2 text-slate-400 hover:text-white p-1"
+                    className="absolute right-2 text-slate-400 hover:text-white p-0.5"
+                    tabIndex={-1}
                   >
-                    {showNewPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    {showNewPassword ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                   </button>
                 </div>
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
                   Confirm Password
                 </label>
                 <input
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Re-enter password"
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                  placeholder="Re-enter"
+                  className="w-full h-9 px-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs sm:text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
                 />
               </div>
             </div>
@@ -551,17 +508,17 @@ export default function PasswordManagerModal({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="mt-1 w-full py-2.5 sm:py-3 px-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] text-white text-xs sm:text-sm font-bold rounded-2xl shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+              className="mt-1 w-full h-10 bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 hover:from-blue-500 hover:to-indigo-500 active:scale-[0.99] text-white text-xs sm:text-sm font-bold rounded-xl shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Updating Password...</span>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Updating...</span>
                 </>
               ) : (
                 <>
                   <ShieldCheck className="w-4 h-4" />
-                  <span>Save Password & Revoke Sessions</span>
+                  <span>Update Password</span>
                 </>
               )}
             </button>

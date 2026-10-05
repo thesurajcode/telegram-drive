@@ -790,35 +790,31 @@ export default function App() {
         <div className="absolute bottom-10 left-10 w-80 h-80 bg-blue-500/10 rounded-full blur-[100px] pointer-events-none" />
         <div className="absolute top-10 right-10 w-72 h-72 bg-indigo-500/10 rounded-full blur-[90px] pointer-events-none" />
 
-        {/* Lock Modal Card - Premium Glassmorphism */}
-        <div className="relative w-full max-w-md bg-slate-900/80 backdrop-blur-2xl border border-white/10 rounded-3xl p-7 sm:p-9 shadow-[0_20px_70px_-15px_rgba(0,0,0,0.8)] flex flex-col items-center text-center z-10">
+        {/* Lock Modal Card - Premium Compact Glassmorphism */}
+        <div className="relative w-full max-w-sm sm:max-w-md bg-slate-900/90 backdrop-blur-2xl border border-white/10 rounded-3xl p-5 sm:p-7 shadow-[0_20px_70px_-15px_rgba(0,0,0,0.8)] flex flex-col items-center text-center z-10 my-auto">
           {/* Subtle Top Glowing Line */}
           <div className="absolute -top-[1px] left-1/2 -translate-x-1/2 w-48 h-[2px] bg-gradient-to-r from-transparent via-blue-500 to-transparent pointer-events-none" />
 
-          {/* Glowing Vault Icon with ambient ring */}
-          <div className="relative mb-6">
-            <div className="absolute inset-0 bg-blue-500/30 rounded-3xl blur-xl animate-pulse" />
-            <div className="relative w-20 h-20 rounded-3xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-400 p-[1.5px] shadow-2xl shadow-blue-500/30">
-              <div className="w-full h-full bg-slate-950/90 rounded-[22px] flex items-center justify-center text-white">
-                <Lock className="w-9 h-9 text-blue-400" />
+          {/* Compact Glowing Vault Icon */}
+          <div className="relative mb-4">
+            <div className="absolute inset-0 bg-blue-500/25 rounded-2xl blur-lg animate-pulse" />
+            <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-400 p-[1.5px] shadow-xl shadow-blue-500/25">
+              <div className="w-full h-full bg-slate-950/90 rounded-[14px] flex items-center justify-center text-white">
+                <Lock className="w-7 h-7 text-blue-400" />
               </div>
             </div>
           </div>
 
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[11px] font-semibold tracking-wide uppercase mb-3">
-            <Zap className="w-3 h-3" /> Telegram MTProto Storage
-          </div>
-
-          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight mb-2">
+          <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight mb-1">
             TelePhotos Vault
           </h2>
-          <p className="text-xs sm:text-sm text-slate-400 mb-6 max-w-xs leading-relaxed font-normal">
-            Personal Cloud Storage with infinite capacity. Unlock your vault to access your photos and files.
+          <p className="text-xs text-slate-400 mb-5 max-w-xs font-normal">
+            Enter your vault password to access your cloud library.
           </p>
 
-          <form onSubmit={handleUnlock} className="w-full flex flex-col gap-4">
+          <form onSubmit={handleUnlock} className="w-full flex flex-col gap-3">
             <div className="relative text-left">
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                 Master Password
               </label>
               <div className="relative flex items-center">
@@ -835,11 +831,11 @@ export default function App() {
                   placeholder="Enter vault password"
                   autoFocus
                   disabled={isUnlocking}
-                  className={`w-full pl-10 pr-11 py-3 text-sm bg-slate-950/80 border ${
+                  className={`w-full pl-10 pr-11 py-2.5 text-sm bg-slate-950/80 border ${
                     authError
                       ? 'border-rose-500 focus:ring-rose-500/30'
                       : 'border-slate-800/90 focus:border-blue-500 focus:ring-blue-500/20'
-                  } rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:ring-4 transition-all shadow-inner`}
+                  } rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 transition-all shadow-inner`}
                 />
                 <button
                   type="button"
@@ -857,13 +853,13 @@ export default function App() {
             </div>
 
             {authError && (
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs text-left animate-in fade-in duration-200">
+              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs text-left animate-in fade-in duration-200">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 <span>{authError}</span>
               </div>
             )}
 
-            <div className="flex items-center justify-between text-xs text-slate-400 pt-1 px-1">
+            <div className="flex items-center justify-between text-xs text-slate-400 pt-0.5 px-0.5">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -871,7 +867,7 @@ export default function App() {
                   onChange={(e) => setRememberDevice(e.target.checked)}
                   className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-blue-600 focus:ring-blue-500/30"
                 />
-                <span className="text-slate-300">Remember this device</span>
+                <span className="text-slate-300">Remember device</span>
               </label>
               <span className="text-[11px] text-slate-500 flex items-center gap-1 font-medium">
                 <ShieldCheck className="w-3.5 h-3.5 text-blue-400" /> 256-bit Encrypted
@@ -881,7 +877,7 @@ export default function App() {
             <button
               type="submit"
               disabled={isUnlocking || !passwordInput.trim()}
-              className="mt-1 w-full py-3.5 px-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold rounded-2xl shadow-xl shadow-blue-500/25 flex items-center justify-center gap-2 transition-all transform active:scale-[0.98] group"
+              className="mt-1 w-full py-3 px-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-bold rounded-xl shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 transition-all transform active:scale-[0.98] group"
             >
               {isUnlocking ? (
                 <>
@@ -897,8 +893,8 @@ export default function App() {
             </button>
           </form>
 
-          {/* Prominent Forgot / Reset Password Trigger */}
-          <div className="w-full mt-5 pt-5 border-t border-slate-800/80 flex flex-col gap-2">
+          {/* Forgot / Reset Password Trigger */}
+          <div className="w-full mt-4 pt-4 border-t border-slate-800/80 flex flex-col gap-2">
             <button
               type="button"
               onClick={() => {
@@ -906,17 +902,17 @@ export default function App() {
                 setShowPasswordModal(true);
                 setAuthError('');
               }}
-              className="w-full py-2.5 px-4 bg-slate-800/80 hover:bg-slate-800 hover:border-blue-500/60 border border-slate-700/70 text-blue-400 hover:text-white text-xs font-bold rounded-2xl flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.98] group"
+              className="w-full py-2 px-3 bg-slate-800/60 hover:bg-slate-800 hover:border-blue-500/50 border border-slate-700/60 text-blue-400 hover:text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-xs active:scale-[0.98]"
             >
-              <Key className="w-4 h-4 text-amber-400 group-hover:rotate-12 transition-transform shrink-0" />
+              <Key className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <span>Forgot Password? Reset with OTP / Master Key</span>
             </button>
           </div>
 
           {/* Security footnote */}
-          <div className="mt-4 pt-2 w-full flex items-center justify-center gap-2 text-[11px] text-slate-500">
+          <div className="mt-3 w-full flex items-center justify-center gap-1.5 text-[11px] text-slate-500">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Encrypted Telegram MTProto Storage • Personal Vault</span>
+            <span>Telegram MTProto Cloud • Personal Vault</span>
           </div>
         </div>
 
@@ -1022,9 +1018,6 @@ export default function App() {
                 <span>{formatBytes(stats.totalBytes)}</span>
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium hidden sm:block truncate">
-              Telegram Infinite Free Cloud • Zero Compression
-            </p>
           </div>
         </div>
 
