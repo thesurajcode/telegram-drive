@@ -208,26 +208,27 @@ export default function PasswordManagerModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-7 shadow-2xl shadow-black flex flex-col text-slate-100 z-10 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
+      <div className="relative w-full max-w-md my-auto bg-slate-900 border border-slate-800/90 rounded-3xl p-5 sm:p-7 shadow-[0_25px_70px_-15px_rgba(0,0,0,0.85)] flex flex-col text-slate-100 z-10 max-h-[92dvh] overflow-y-auto no-scrollbar">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors"
+          className="absolute top-4 right-4 sm:top-5 sm:right-5 p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors z-20"
+          title="Close modal"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Modal Header */}
-        <div className="flex items-center gap-3 mb-5">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/25 shrink-0">
+        <div className="flex items-center gap-3.5 mb-3.5 pr-8">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-400 flex items-center justify-center text-white shadow-lg shadow-blue-500/25 shrink-0">
             <Key className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-white tracking-tight">
+            <h3 className="text-lg sm:text-xl font-extrabold text-white tracking-tight">
               {currentMode === 'reset' ? 'Reset Vault Password' : 'Change Vault Password'}
             </h3>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-400 mt-0.5">
               {currentMode === 'reset'
                 ? 'Authorize with Email OTP or Master Admin Key'
                 : 'Update the daily access password for this vault'}
@@ -237,17 +238,17 @@ export default function PasswordManagerModal({
 
         {/* Mode = 'reset': Tabs for OTP vs Master Admin Password */}
         {currentMode === 'reset' && (
-          <div className="grid grid-cols-2 p-1 bg-slate-950 border border-slate-800 rounded-2xl mb-4 text-xs font-semibold">
+          <div className="grid grid-cols-2 p-1 bg-slate-950 border border-slate-800 rounded-2xl mb-3 text-xs font-bold">
             <button
               type="button"
               onClick={() => {
                 setActiveTab('otp');
                 setErrorMsg('');
               }}
-              className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl transition-all ${
+              className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl transition-all ${
                 activeTab === 'otp'
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                  : 'text-slate-400 hover:text-white'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
               }`}
             >
               <Mail className="w-3.5 h-3.5" />
@@ -259,10 +260,10 @@ export default function PasswordManagerModal({
                 setActiveTab('master');
                 setErrorMsg('');
               }}
-              className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl transition-all ${
+              className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl transition-all ${
                 activeTab === 'master'
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                  : 'text-slate-400 hover:text-white'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
               }`}
             >
               <ShieldCheck className="w-3.5 h-3.5" />
@@ -271,24 +272,24 @@ export default function PasswordManagerModal({
           </div>
         )}
 
-        {/* Global Session Revocation Info Notice */}
-        <div className="mb-4 flex items-start gap-2 p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 text-[11px] leading-tight">
-          <Info className="w-4 h-4 shrink-0 mt-0.5 text-blue-400" />
+        {/* Compact Instant Device Logout Info Notice */}
+        <div className="mb-3 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 text-[11px] leading-tight">
+          <Info className="w-3.5 h-3.5 shrink-0 text-blue-400" />
           <span>
-            <strong>Instant Device Logout:</strong> Changing your password will immediately revoke access and kick out all other logged-in devices (including shared sessions).
+            <strong>Instant Logout:</strong> Changing password kicks out all other active sessions.
           </span>
         </div>
 
         {/* Feedback Alerts */}
         {errorMsg && (
-          <div className="mb-4 flex items-center gap-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs">
+          <div className="mb-3 flex items-center gap-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{errorMsg}</span>
           </div>
         )}
 
         {successNotice && (
-          <div className="mb-4 flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs">
+          <div className="mb-3 flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs">
             <CheckCircle className="w-4 h-4 shrink-0" />
             <span>{successNotice}</span>
           </div>
@@ -296,27 +297,28 @@ export default function PasswordManagerModal({
 
         {/* Form Body */}
         {currentMode === 'reset' ? (
-          <form onSubmit={handleResetSubmit} className="flex flex-col gap-3.5">
+          <form onSubmit={handleResetSubmit} className="flex flex-col gap-3">
             {activeTab === 'otp' ? (
               <>
-                {/* OTP Dispatch Section */}
-                <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-2xl flex flex-col gap-2">
+                {/* OTP Dispatch Card */}
+                <div className="p-3 bg-slate-950/80 border border-slate-800/90 rounded-2xl flex flex-col gap-2">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-400">Target Email:</span>
-                    <span className="font-semibold text-blue-400 font-mono">
+                    <span className="font-semibold text-blue-400 font-mono text-[11px] sm:text-xs truncate max-w-[200px]">
                       {targetEmail}
                     </span>
                   </div>
+
                   <button
                     type="button"
                     onClick={handleRequestOtp}
                     disabled={isSendingOtp || cooldown > 0}
-                    className="w-full mt-1 py-2 px-3 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/40 text-blue-300 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full py-2 px-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 shadow-md shadow-blue-600/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
                   >
                     {isSendingOtp ? (
                       <>
                         <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                        <span>Dispatching to Gmail...</span>
+                        <span>Sending to Gmail...</span>
                       </>
                     ) : cooldown > 0 ? (
                       <span>Resend code in {cooldown}s</span>
@@ -327,107 +329,121 @@ export default function PasswordManagerModal({
                       </>
                     )}
                   </button>
-                  <p className="text-[11px] text-slate-400 text-center mt-0.5">
-                    Need instant access? Switch to the{' '}
+
+                  <p className="text-[11px] text-slate-400 text-center">
+                    Need instant access?{' '}
                     <button
                       type="button"
                       onClick={() => {
                         setActiveTab('master');
                         setErrorMsg('');
                       }}
-                      className="text-amber-400 hover:text-amber-300 underline font-semibold transition-colors"
+                      className="text-amber-400 hover:text-amber-300 font-bold underline"
                     >
-                      Master Admin Key
-                    </button>{' '}
-                    tab above.
+                      Use Master Admin Key
+                    </button>
                   </p>
                 </div>
 
                 {/* 6-Digit Code Input */}
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                    6-Digit Verification Code
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                      6-Digit Verification Code
+                    </label>
+                    {otpSent && (
+                      <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
+                        <Check className="w-3 h-3" /> Sent to Inbox
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="text"
+                    inputMode="numeric"
                     maxLength={6}
                     value={otpCode}
                     onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                    placeholder="Enter 6-digit OTP"
-                    className="w-full px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-center text-lg font-mono tracking-widest text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    placeholder="••••••"
+                    className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl text-center text-xl font-mono font-bold tracking-[0.4em] text-blue-400 placeholder:text-slate-600 placeholder:tracking-widest focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-inner"
                   />
                 </div>
               </>
             ) : (
               /* Master Admin Password Tab */
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                  Master Admin Password (Recovery Key)
-                </label>
+              <div className="p-3 bg-slate-950/80 border border-slate-800/90 rounded-2xl flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    Master Admin Password
+                  </label>
+                  <span className="text-[10px] text-amber-400 font-bold bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">
+                    Zero-Email Recovery
+                  </span>
+                </div>
                 <div className="relative flex items-center">
                   <input
                     type={showMasterPassword ? 'text' : 'password'}
                     value={masterPassword}
                     onChange={(e) => setMasterPassword(e.target.value)}
-                    placeholder="Enter MASTER_ADMIN_PASSWORD"
-                    className="w-full pl-3.5 pr-10 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    placeholder="Enter Master Admin Password"
+                    className="w-full pl-3.5 pr-10 py-2 bg-slate-900 border border-slate-800 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-mono"
                   />
                   <button
                     type="button"
                     onClick={() => setShowMasterPassword(!showMasterPassword)}
-                    className="absolute right-3 text-slate-500 hover:text-slate-300"
+                    className="absolute right-3 text-slate-400 hover:text-white p-1"
                   >
                     {showMasterPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-                <p className="text-[11px] text-slate-500 mt-1">
-                  Permanent key configured in server/.env
+                <p className="text-[11px] text-slate-400">
+                  Permanent key configured in <code className="text-amber-400 font-mono">server/.env</code>. Resets instantly without requiring email.
                 </p>
               </div>
             )}
 
-            {/* New Password Input */}
-            <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                New Vault Password
-              </label>
-              <div className="relative flex items-center">
-                <input
-                  type={showNewPassword ? 'text' : 'password'}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="At least 4 characters"
-                  className="w-full pl-3.5 pr-10 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowNewPassword(!showNewPassword)}
-                  className="absolute right-3 text-slate-500 hover:text-slate-300"
-                >
-                  {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+            {/* New Password & Confirm Password Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  New Password
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Min 4 chars"
+                    className="w-full pl-3 pr-8 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-2 text-slate-400 hover:text-white p-1"
+                  >
+                    {showNewPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
               </div>
-            </div>
 
-            {/* Confirm Password Input */}
-            <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                Confirm New Password
-              </label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Re-enter new password"
-                className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
-              />
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  Confirm Password
+                </label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Re-enter password"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                />
+              </div>
             </div>
 
             {/* Submit Button */}
             <button
               type="submit"
               disabled={isSubmitting}
-              className="mt-1 w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-bold rounded-2xl shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+              className="mt-1 w-full py-2.5 sm:py-3 px-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] text-white text-xs sm:text-sm font-bold rounded-2xl shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>
@@ -437,7 +453,7 @@ export default function PasswordManagerModal({
               ) : (
                 <>
                   <ShieldCheck className="w-4 h-4" />
-                  <span>Update Password & Kick Out Other Devices</span>
+                  <span>Update Password & Revoke Sessions</span>
                 </>
               )}
             </button>
@@ -450,7 +466,7 @@ export default function PasswordManagerModal({
                   setCurrentMode('change');
                   setErrorMsg('');
                 }}
-                className="text-xs text-slate-400 hover:text-slate-200 text-center mt-1 py-1"
+                className="text-xs text-slate-400 hover:text-slate-200 text-center py-0.5"
               >
                 &larr; I know my current password
               </button>
@@ -458,7 +474,7 @@ export default function PasswordManagerModal({
           </form>
         ) : (
           /* Mode = 'change' (inside authenticated vault) */
-          <form onSubmit={handleChangeSubmit} className="flex flex-col gap-3.5">
+          <form onSubmit={handleChangeSubmit} className="flex flex-col gap-3">
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
                 Current Vault Password
@@ -469,54 +485,56 @@ export default function PasswordManagerModal({
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   placeholder="Enter current password"
-                  className="w-full pl-3.5 pr-10 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                  className="w-full pl-3.5 pr-10 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                  className="absolute right-3 text-slate-500 hover:text-slate-300"
+                  className="absolute right-3 text-slate-400 hover:text-white p-1"
                 >
                   {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
 
-            <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                New Vault Password
-              </label>
-              <div className="relative flex items-center">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  New Password
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Min 4 chars"
+                    className="w-full pl-3 pr-8 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-2 text-slate-400 hover:text-white p-1"
+                  >
+                    {showNewPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  Confirm Password
+                </label>
                 <input
-                  type={showNewPassword ? 'text' : 'password'}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="At least 4 characters"
-                  className="w-full pl-3.5 pr-10 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Re-enter password"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowNewPassword(!showNewPassword)}
-                  className="absolute right-3 text-slate-500 hover:text-slate-300"
-                >
-                  {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
               </div>
             </div>
 
-            <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                Confirm New Password
-              </label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Re-enter new password"
-                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
-              />
-            </div>
-
-            <div className="flex items-center justify-between text-xs pt-1">
+            <div className="flex items-center justify-between text-xs pt-0.5">
               <button
                 type="button"
                 onClick={() => {
@@ -526,14 +544,14 @@ export default function PasswordManagerModal({
                 }}
                 className="text-blue-400 hover:text-blue-300 font-medium transition-colors"
               >
-                Forgot current password? Reset with OTP
+                Forgot password? Reset with OTP
               </button>
             </div>
 
             <button
               type="submit"
               disabled={isSubmitting}
-              className="mt-1 w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-bold rounded-2xl shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+              className="mt-1 w-full py-2.5 sm:py-3 px-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] text-white text-xs sm:text-sm font-bold rounded-2xl shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>
@@ -543,7 +561,7 @@ export default function PasswordManagerModal({
               ) : (
                 <>
                   <ShieldCheck className="w-4 h-4" />
-                  <span>Save New Password & Kick Out Other Devices</span>
+                  <span>Save Password & Revoke Sessions</span>
                 </>
               )}
             </button>
