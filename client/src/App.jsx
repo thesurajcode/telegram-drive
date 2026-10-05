@@ -214,19 +214,25 @@ export default function App() {
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [showVaultMenu, setShowVaultMenu] = useState(false);
   const vaultMenuRef = useRef(null);
+  const mobileVaultSheetRef = useRef(null);
 
-  // Close vault menu when clicking outside
+  // Close vault menu when clicking outside (supports desktop dropdown & mobile bottom sheet)
   useEffect(() => {
+    if (!showVaultMenu) return;
+
     const handleClickOutside = (e) => {
-      if (vaultMenuRef.current && !vaultMenuRef.current.contains(e.target)) {
-        setShowVaultMenu(false);
-      }
+      if (vaultMenuRef.current && vaultMenuRef.current.contains(e.target)) return;
+      if (mobileVaultSheetRef.current && mobileVaultSheetRef.current.contains(e.target)) return;
+      setShowVaultMenu(false);
     };
-    if (showVaultMenu) {
+
+    const timer = setTimeout(() => {
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('touchstart', handleClickOutside);
-    }
+    }, 50);
+
     return () => {
+      clearTimeout(timer);
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
     };
@@ -1090,12 +1096,16 @@ export default function App() {
           <div className="relative" ref={vaultMenuRef}>
             <button
               onClick={() => setShowVaultMenu(!showVaultMenu)}
-              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-800 rounded-full transition-all active:scale-95 shadow-2xs"
+              className={`flex items-center gap-1.5 px-3 py-1.5 sm:py-2 text-xs font-bold rounded-full transition-all active:scale-95 shadow-2xs shrink-0 ${
+                showVaultMenu
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                  : 'text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800'
+              }`}
               title="Vault Security & Settings"
             >
-              <ShieldCheck className="w-4 h-4 text-blue-500 shrink-0" />
-              <span className="hidden sm:inline">Vault</span>
-              <ChevronDown className="w-3 h-3 text-slate-400 hidden sm:inline" />
+              <ShieldCheck className={`w-4 h-4 shrink-0 ${showVaultMenu ? 'text-white' : 'text-blue-500'}`} />
+              <span>Vault</span>
+              <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${showVaultMenu ? 'rotate-180 text-white' : 'text-slate-400'}`} />
             </button>
 
             {/* Desktop Floating Dropdown Card */}
@@ -1714,7 +1724,11 @@ export default function App() {
             onClick={() => setShowVaultMenu(false)}
           />
           {/* Sheet Container */}
-          <div className="relative w-full bg-white dark:bg-[#0c101d] border-t border-slate-200 dark:border-slate-800 rounded-t-3xl p-5 shadow-2xl z-10 animate-in slide-in-from-bottom duration-200 flex flex-col gap-3.5 safe-bottom max-w-full">
+          <div
+            ref={mobileVaultSheetRef}
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full bg-white dark:bg-[#0c101d] border-t border-slate-200 dark:border-slate-800 rounded-t-3xl p-5 shadow-2xl z-10 animate-in slide-in-from-bottom duration-200 flex flex-col gap-3.5 safe-bottom max-w-full"
+          >
             {/* Grab Handle */}
             <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto -mt-1 mb-1" />
 
