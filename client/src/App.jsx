@@ -947,9 +947,9 @@ export default function App() {
 
   return (
     <div
-      className={`min-h-screen ${
+      className={`min-h-screen w-full max-w-[100vw] overflow-x-hidden ${
         isDarkMode ? 'dark bg-[#080c14] text-slate-100' : 'bg-[#f8fafc] text-slate-800'
-      } flex flex-col antialiased selection:bg-blue-500 selection:text-white pb-20 sm:pb-10 transition-colors duration-200`}
+      } flex flex-col antialiased selection:bg-blue-500 selection:text-white pb-28 sm:pb-10 transition-colors duration-200`}
     >
       {/* Full-Window Drag and Drop Active Overlay */}
       {isDragging && (
@@ -989,34 +989,34 @@ export default function App() {
       )}
 
       {/* Top Navbar: Modern Frosted Glass Aesthetic with Theme Toggle & Vault Menu */}
-      <header className="sticky top-0 z-30 bg-white/85 dark:bg-[#080c14]/90 backdrop-blur-2xl border-b border-slate-200/80 dark:border-slate-800/80 px-3.5 sm:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-3 shadow-xs transition-colors duration-200">
+      <header className="sticky top-0 z-30 bg-white/90 dark:bg-[#080c14]/95 backdrop-blur-2xl border-b border-slate-200/80 dark:border-slate-800/80 px-3 sm:px-8 py-2 sm:py-3 flex items-center justify-between gap-2 sm:gap-3 shadow-xs transition-colors duration-200 w-full max-w-full overflow-hidden">
         {/* Logo, Identity & Small Area Storage Used Indicator */}
-        <div className="flex items-center gap-2.5 sm:gap-3.5">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-400 flex items-center justify-center text-white shadow-md shadow-blue-500/25 ring-2 ring-blue-500/20 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-400 flex items-center justify-center text-white shadow-md shadow-blue-500/25 ring-2 ring-blue-500/20 shrink-0">
             <HardDrive className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-1.5 sm:gap-2">
-              <h1 className="text-base sm:text-lg font-black tracking-tight bg-gradient-to-r from-slate-900 dark:from-white via-slate-800 dark:via-slate-100 to-slate-900 dark:to-white bg-clip-text text-transparent">
+              <h1 className="text-base sm:text-lg font-black tracking-tight bg-gradient-to-r from-slate-900 dark:from-white via-slate-800 dark:via-slate-100 to-slate-900 dark:to-white bg-clip-text text-transparent truncate">
                 TelePhotos
               </h1>
 
               {/* Protocol Badge */}
-              <span className="hidden md:inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 border border-blue-200/70 dark:border-blue-800/70 rounded-full shadow-2xs">
+              <span className="hidden md:inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 border border-blue-200/70 dark:border-blue-800/70 rounded-full shadow-2xs shrink-0">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 MTProto Cloud
               </span>
 
               {/* Storage Indicator */}
               <span
-                className="flex items-center gap-1.5 px-2.5 py-0.5 text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80 rounded-full shadow-2xs"
+                className="flex items-center gap-1 px-2 sm:px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80 rounded-full shadow-2xs shrink-0"
                 title={`Total Cloud Storage Used: ${formatBytes(stats.totalBytes)} across ${stats.totalCount} files`}
               >
                 <HardDrive className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
                 <span>{formatBytes(stats.totalBytes)}</span>
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium hidden sm:block">
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium hidden sm:block truncate">
               Telegram Infinite Free Cloud • Zero Compression
             </p>
           </div>
@@ -1048,12 +1048,12 @@ export default function App() {
         </div>
 
         {/* Header Actions: Theme Switcher, Refresh, Primary Upload, Vault Settings Menu */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           {/* Night Mode Toggle Button */}
           <button
             onClick={toggleTheme}
             title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Night Mode'}
-            className="p-2 text-slate-600 dark:text-amber-400 hover:text-blue-600 dark:hover:text-amber-300 hover:bg-slate-100 dark:hover:bg-slate-900 active:scale-95 rounded-xl transition-all border border-transparent dark:border-slate-800"
+            className="p-1.5 sm:p-2 text-slate-600 dark:text-amber-400 hover:text-blue-600 dark:hover:text-amber-300 hover:bg-slate-100 dark:hover:bg-slate-900 active:scale-95 rounded-xl transition-all border border-transparent dark:border-slate-800"
           >
             {isDarkMode ? (
               <Sun className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
@@ -1062,12 +1062,12 @@ export default function App() {
             )}
           </button>
 
-          {/* Refresh Gallery Button */}
+          {/* Refresh Gallery Button - Desktop / Tablet (Mobile has it in bottom sheet) */}
           <button
             onClick={fetchGallery}
             disabled={loading}
             title="Refresh gallery"
-            className="p-2 text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 active:scale-95 rounded-xl transition-all border border-transparent dark:border-slate-800"
+            className="hidden sm:inline-flex p-2 text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 active:scale-95 rounded-xl transition-all border border-transparent dark:border-slate-800"
           >
             <RefreshCw
               className={`w-4 h-4 sm:w-5 sm:h-5 ${
@@ -1076,31 +1076,31 @@ export default function App() {
             />
           </button>
 
-          {/* Upload Button */}
+          {/* Upload Button - Desktop / Tablet (Mobile uses the floating bottom nav button) */}
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={!!uploadStatus}
-            className="flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 active:scale-95 rounded-full shadow-md shadow-blue-500/25 transition-all"
+            className="hidden sm:flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 active:scale-95 rounded-full shadow-md shadow-blue-500/25 transition-all"
           >
             <Upload className="w-4 h-4" />
-            <span className="hidden sm:inline">Upload</span>
+            <span>Upload</span>
           </button>
 
           {/* Vault Security Dropdown Menu (Organized & Clean) */}
           <div className="relative" ref={vaultMenuRef}>
             <button
               onClick={() => setShowVaultMenu(!showVaultMenu)}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-800 rounded-full transition-all active:scale-95 shadow-2xs"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-800 rounded-full transition-all active:scale-95 shadow-2xs"
               title="Vault Security & Settings"
             >
-              <ShieldCheck className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+              <ShieldCheck className="w-4 h-4 text-blue-500 shrink-0" />
               <span className="hidden sm:inline">Vault</span>
-              <ChevronDown className="w-3 h-3 text-slate-400" />
+              <ChevronDown className="w-3 h-3 text-slate-400 hidden sm:inline" />
             </button>
 
-            {/* Floating Dropdown Card */}
+            {/* Desktop Floating Dropdown Card */}
             {showVaultMenu && (
-              <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-2xl shadow-black/30 z-50 animate-in fade-in zoom-in-95 duration-150 flex flex-col gap-3">
+              <div className="hidden sm:flex absolute right-0 mt-2 w-80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-2xl shadow-black/30 z-50 animate-in fade-in zoom-in-95 duration-150 flex-col gap-3">
                 {/* Vault Status Header */}
                 <div className="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
                   <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
@@ -1275,9 +1275,9 @@ export default function App() {
         )}
 
         {/* Sticky Controls Bar: User-Friendly Category Tabs + Search + Sort + Layout Density */}
-        <div className="sticky top-[56px] sm:top-[65px] z-20 bg-slate-50/95 dark:bg-[#080c14]/95 backdrop-blur-xl py-2 px-0.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/70 dark:border-slate-800/70 transition-colors duration-200">
+        <div className="sticky top-[52px] sm:top-[65px] z-20 bg-slate-50/95 dark:bg-[#080c14]/95 backdrop-blur-xl py-2 px-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-200/70 dark:border-slate-800/70 transition-colors duration-200 max-w-full overflow-hidden">
           {/* Segmented Category Control Tabs (Unified & Clean) */}
-          <div className="flex items-center gap-1 p-1 bg-slate-200/70 dark:bg-slate-900 border dark:border-slate-800/80 rounded-2xl overflow-x-auto no-scrollbar max-w-full">
+          <div className="flex items-center gap-1.5 p-1 bg-slate-200/70 dark:bg-slate-900 border dark:border-slate-800/80 rounded-2xl overflow-x-auto no-scrollbar max-w-full">
             <button
               onClick={() => setActiveTab('all')}
               className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
@@ -1490,7 +1490,7 @@ export default function App() {
                         {fileType === 'video' && (
                           <div
                             className={`relative bg-slate-950 flex items-center justify-center overflow-hidden ${
-                              isSquare ? 'w-full h-full' : 'aspect-[4/5] sm:aspect-square'
+                              isSquare ? 'w-full h-full' : 'aspect-[4/5] sm:aspect-square max-h-72 sm:max-h-96'
                             }`}
                           >
                             <video
@@ -1516,7 +1516,7 @@ export default function App() {
                         {fileType === 'image' && (
                           <div
                             className={`relative bg-slate-100 dark:bg-slate-900 flex items-center justify-center overflow-hidden ${
-                              isSquare ? 'w-full h-full' : 'min-h-[140px]'
+                              isSquare ? 'w-full h-full' : 'min-h-[140px] max-h-72 sm:max-h-96'
                             }`}
                           >
                             <img
@@ -1531,7 +1531,7 @@ export default function App() {
                                 }
                               }}
                               className={`w-full ${
-                                isSquare ? 'h-full object-cover' : 'h-auto object-cover'
+                                isSquare ? 'h-full object-cover' : 'h-full max-h-72 sm:max-h-96 object-cover'
                               } group-hover:scale-105 transition-transform duration-300`}
                             />
                             <div className="hidden absolute inset-0 bg-slate-900 text-slate-400 flex flex-col items-center justify-center text-[10px] p-2 text-center">
@@ -1704,6 +1704,99 @@ export default function App() {
           <span className="text-[10px]">Vault</span>
         </button>
       </nav>
+
+      {/* Mobile Native Bottom Sheet for Vault Settings (Thumb-Friendly & Responsive) */}
+      {showVaultMenu && (
+        <div className="sm:hidden fixed inset-0 z-50 flex flex-col justify-end">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+            onClick={() => setShowVaultMenu(false)}
+          />
+          {/* Sheet Container */}
+          <div className="relative w-full bg-white dark:bg-[#0c101d] border-t border-slate-200 dark:border-slate-800 rounded-t-3xl p-5 shadow-2xl z-10 animate-in slide-in-from-bottom duration-200 flex flex-col gap-3.5 safe-bottom max-w-full">
+            {/* Grab Handle */}
+            <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto -mt-1 mb-1" />
+
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+                  <Lock className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">
+                    TelePhotos Private Vault
+                  </p>
+                  <p className="text-[11px] text-emerald-500 font-semibold flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Session Encrypted & Active
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowVaultMenu(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full bg-slate-100 dark:bg-slate-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Storage Summary */}
+            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/80 border border-slate-100 dark:border-slate-800 text-xs">
+              <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1.5">
+                <span>Cloud Storage:</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200 font-mono">
+                  {formatBytes(stats.totalBytes)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+                <span>Total Media Files:</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200 font-mono">
+                  {stats.totalCount} items
+                </span>
+              </div>
+            </div>
+
+            {/* Action 1: Refresh Gallery & Sync */}
+            <button
+              onClick={() => {
+                fetchGallery();
+                setShowVaultMenu(false);
+              }}
+              className="w-full flex items-center gap-2.5 p-3 rounded-2xl bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-all active:scale-[0.98]"
+            >
+              <RefreshCw className={`w-4 h-4 text-blue-500 ${loading ? 'animate-spin' : ''}`} />
+              <span>Refresh Gallery & Cloud Sync</span>
+            </button>
+
+            {/* Action 2: Change Password */}
+            <button
+              onClick={() => {
+                setShowVaultMenu(false);
+                setPasswordModalMode('change');
+                setShowPasswordModal(true);
+              }}
+              className="w-full flex items-center gap-2.5 p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-400 text-xs font-semibold transition-all active:scale-[0.98]"
+            >
+              <Key className="w-4 h-4 text-amber-500" />
+              <span>Change Password & Revoke Devices</span>
+            </button>
+
+            {/* Action 3: Lock Vault */}
+            <button
+              onClick={() => {
+                setShowVaultMenu(false);
+                handleLock('Vault locked successfully.');
+              }}
+              className="w-full flex items-center gap-2.5 p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 text-xs font-semibold transition-all active:scale-[0.98] border border-rose-200/50 dark:border-rose-900/50"
+            >
+              <Lock className="w-4 h-4 text-rose-500" />
+              <span>Lock Vault & Sign Out</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* High-Performance Lightbox & Media Viewer with Touch Swipe, Slide Transitions & Filmstrip */}
       {selectedFile && (
