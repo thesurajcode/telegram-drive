@@ -9,7 +9,7 @@ const {
 const { OWNER_EMAIL, sendOtpEmail } = require('../config/mailer');
 
 /**
- * Masks an email for safe display (e.g. surajchandan09@gmail.com -> su***09@gmail.com)
+ * Masks an email for safe display (e.g. user@example.com -> us***@example.com)
  */
 function maskEmail(email) {
   if (!email || !email.includes('@')) return 'registered email';

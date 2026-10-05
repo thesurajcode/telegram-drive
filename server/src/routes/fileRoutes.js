@@ -35,7 +35,7 @@ router.get('/auth/verify', authMiddleware, verify);
 
 /**
  * Route: POST /api/auth/request-otp
- * Dispatches 6-digit OTP strictly to surajchandan09@gmail.com
+ * Dispatches 6-digit OTP strictly to configured ADMIN_EMAIL
  */
 router.post('/auth/request-otp', otpLimiter, requestPasswordResetOtp);
 
