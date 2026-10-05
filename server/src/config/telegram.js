@@ -59,6 +59,26 @@ function exportSessionString(client) {
   return sessionString;
 }
 
+function clearEnvSessionString() {
+  try {
+    const envPaths = [
+      path.resolve(__dirname, '../../.env'),
+      path.resolve(__dirname, '../../../.env'),
+    ];
+    for (const envPath of envPaths) {
+      if (fs.existsSync(envPath)) {
+        let envContent = fs.readFileSync(envPath, 'utf8');
+        if (envContent.includes('TELEGRAM_SESSION_STRING=')) {
+          envContent = envContent.replace(/^TELEGRAM_SESSION_STRING=.*$/m, 'TELEGRAM_SESSION_STRING=');
+          fs.writeFileSync(envPath, envContent, 'utf8');
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('⚠️ Could not clear session string from .env file:', err.message);
+  }
+}
+
 /**
  * Initializes and connects the GramJS TelegramClient using bot credentials
  * or an existing StringSession.
@@ -101,6 +121,7 @@ async function initTelegramClient() {
       '⚠️ TELEGRAM_SESSION_STRING format is invalid (must start with "1"). Discarding and using Bot Token.'
     );
     sessionString = '';
+    clearEnvSessionString();
   }
 
   if (!botToken && !sessionString) {
@@ -121,6 +142,7 @@ async function initTelegramClient() {
         `⚠️ Invalid TELEGRAM_SESSION_STRING ("${sessionErr.message}"). Discarding and falling back to Bot Token.`
       );
       sessionString = '';
+      clearEnvSessionString();
       stringSession = new StringSession('');
     }
   } else {
@@ -152,8 +174,15 @@ async function initTelegramClient() {
       const me = await clientInstance.getMe();
       console.log(`🤖 Logged in as: @${me.username || me.firstName} (ID: ${me.id})`);
     } catch (meErr) {
-      if (meErr.message && meErr.message.includes('AUTH_KEY_DUPLICATED')) {
-        console.warn('⚠️ AUTH_KEY_DUPLICATED on saved session. Discarding and reconnecting with Bot Token...');
+      const errMsg = (meErr.message || meErr.errorMessage || '').toUpperCase();
+      if (
+        errMsg.includes('AUTH_KEY_DUPLICATED') ||
+        errMsg.includes('AUTH_KEY_UNREGISTERED') ||
+        errMsg.includes('SESSION_REVOKED') ||
+        errMsg.includes('SESSION_EXPIRED') ||
+        meErr.code === 401
+      ) {
+        console.warn(`⚠️ Telegram session invalid (${meErr.errorMessage || meErr.message}). Discarding and reconnecting with Bot Token...`);
         return await resetTelegramClient();
       }
       throw meErr;
@@ -165,6 +194,9 @@ async function initTelegramClient() {
     // If the session string was invalid/revoked or duplicate key, retry once with bot token
     if (botToken) {
       console.log('🔄 Retrying login using TELEGRAM_BOT_TOKEN...');
+      clearEnvSessionString();
+      process.env.TELEGRAM_SESSION_STRING = '';
+
       try {
         if (clientInstance) {
           await clientInstance.disconnect();
@@ -207,8 +239,9 @@ async function resetTelegramClient() {
     clientInstance = null;
   }
 
-  // Clear environment variable for this process so it uses Bot Token
+  // Clear environment variable and saved file for this process so it uses Bot Token
   process.env.TELEGRAM_SESSION_STRING = '';
+  clearEnvSessionString();
 
   return await initTelegramClient();
 }
@@ -235,26 +268,42 @@ async function getChannelEntity(client) {
     throw new Error('TELEGRAM_CHANNEL_ID is not configured in your .env file.');
   }
 
-  try {
-    // If it's a numeric channel ID (e.g. -1001234567890 or 1234567890)
+  const resolve = async (c) => {
     if (/^-?\d+$/.test(rawChannelId)) {
       try {
-        return await client.getInputEntity(BigInt(rawChannelId));
+        return await c.getInputEntity(BigInt(rawChannelId));
       } catch {
-        return await client.getInputEntity(rawChannelId);
+        return await c.getInputEntity(rawChannelId);
       }
     }
-    // If it's a public channel username or invite handle
-    return await client.getInputEntity(rawChannelId);
-  } catch (primaryErr) {
+    return await c.getInputEntity(rawChannelId);
+  };
+
+  try {
     try {
+      return await resolve(client);
+    } catch (primaryErr) {
       return await client.getEntity(rawChannelId);
-    } catch (fallbackErr) {
-      console.error(
-        `❌ Could not resolve channel entity '${rawChannelId}'. Please ensure the bot is added as an administrator to the channel.`
-      );
-      throw fallbackErr;
     }
+  } catch (fallbackErr) {
+    const errMsg = (fallbackErr.message || fallbackErr.errorMessage || '').toUpperCase();
+    if (
+      errMsg.includes('AUTH_KEY_UNREGISTERED') ||
+      errMsg.includes('AUTH_KEY_DUPLICATED') ||
+      fallbackErr.code === 401
+    ) {
+      console.warn('⚠️ Telegram auth key invalid during channel resolution. Auto-recovering session...');
+      const freshClient = await resetTelegramClient();
+      try {
+        return await resolve(freshClient);
+      } catch {
+        return await freshClient.getEntity(rawChannelId);
+      }
+    }
+    console.error(
+      `❌ Could not resolve channel entity '${rawChannelId}'. Please ensure the bot is added as an administrator to the channel.`
+    );
+    throw fallbackErr;
   }
 }
 
