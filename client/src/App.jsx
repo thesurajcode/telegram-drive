@@ -995,7 +995,7 @@ export default function App() {
       )}
 
       {/* Top Navbar: Modern Frosted Glass Aesthetic with Theme Toggle & Vault Menu */}
-      <header className="sticky top-0 z-30 bg-white/90 dark:bg-[#080c14]/95 backdrop-blur-2xl border-b border-slate-200/80 dark:border-slate-800/80 px-3 sm:px-8 py-2 sm:py-3 flex items-center justify-between gap-2 sm:gap-3 shadow-xs transition-colors duration-200 w-full max-w-full overflow-hidden">
+      <header className="sticky top-0 z-40 bg-white/90 dark:bg-[#080c14]/95 backdrop-blur-2xl border-b border-slate-200/80 dark:border-slate-800/80 px-3 sm:px-8 py-2 sm:py-3 flex items-center justify-between gap-2 sm:gap-3 shadow-xs transition-colors duration-200 w-full overflow-visible">
         {/* Logo, Identity & Small Area Storage Used Indicator */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
           <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-400 flex items-center justify-center text-white shadow-md shadow-blue-500/25 ring-2 ring-blue-500/20 shrink-0">
@@ -1110,7 +1110,7 @@ export default function App() {
 
             {/* Desktop Floating Dropdown Card */}
             {showVaultMenu && (
-              <div className="hidden sm:flex absolute right-0 mt-2 w-80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-2xl shadow-black/30 z-50 animate-in fade-in zoom-in-95 duration-150 flex-col gap-3">
+              <div className="hidden sm:flex absolute right-0 top-full mt-2.5 w-80 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-4 shadow-2xl shadow-black/40 z-50 animate-in fade-in zoom-in-95 duration-150 flex-col gap-3">
                 {/* Vault Status Header */}
                 <div className="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
                   <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
