@@ -33,6 +33,8 @@ import {
   Columns,
   ArrowUpDown,
   ChevronUp,
+  Moon,
+  Sun,
 } from 'lucide-react';
 import MediaLightbox from './components/MediaLightbox';
 
@@ -204,6 +206,45 @@ export default function App() {
   const [gridMode, setGridMode] = useState('grid'); // 'grid' (square Google Photos tiles) vs 'columns' (masonry flow)
   const [sortBy, setSortBy] = useState('newest'); // 'newest' | 'oldest' | 'largest' | 'smallest' | 'name'
   const [showBackToTop, setShowBackToTop] = useState(false);
+
+  // Night Mode state with localStorage persistence & system preference fallback
+  const THEME_KEY = 'telephotos_theme';
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem(THEME_KEY);
+    if (saved) return saved === 'dark';
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
+  const searchInputRef = useRef(null);
+
+  // Apply dark mode class to root document element and persist in localStorage
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem(THEME_KEY, 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem(THEME_KEY, 'light');
+    }
+  }, [isDarkMode]);
+
+  const toggleTheme = () => setIsDarkMode((prev) => !prev);
+
+  // Global keyboard shortcut: '/' focuses search input
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (
+        e.key === '/' &&
+        document.activeElement?.tagName !== 'INPUT' &&
+        document.activeElement?.tagName !== 'TEXTAREA'
+      ) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const [isDragging, setIsDragging] = useState(false);
 
@@ -822,7 +863,11 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col text-slate-800 antialiased selection:bg-blue-500 selection:text-white pb-20 sm:pb-10">
+    <div
+      className={`min-h-screen ${
+        isDarkMode ? 'dark bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-800'
+      } flex flex-col antialiased selection:bg-blue-500 selection:text-white pb-20 sm:pb-10 transition-colors duration-200`}
+    >
       {/* Full-Window Drag and Drop Active Overlay */}
       {isDragging && (
         <div className="fixed inset-0 z-50 bg-blue-600/85 backdrop-blur-md flex flex-col items-center justify-center text-white pointer-events-none animate-in fade-in duration-200">
@@ -842,7 +887,7 @@ export default function App() {
       {toast && (
         <div
           className={`fixed bottom-8 sm:bottom-6 left-1/2 -translate-x-1/2 sm:left-auto sm:right-6 sm:translate-x-0 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl text-white transition-all transform animate-in slide-in-from-bottom-5 duration-300 max-w-[92vw] sm:max-w-md ${
-            toast.type === 'error' ? 'bg-rose-600' : 'bg-slate-900'
+            toast.type === 'error' ? 'bg-rose-600' : 'bg-slate-900 dark:bg-slate-800 border dark:border-slate-700'
           }`}
         >
           {toast.type === 'error' ? (
@@ -860,72 +905,107 @@ export default function App() {
         </div>
       )}
 
-      {/* Top Navbar: Modern Frosted Glass Aesthetic */}
-      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200/80 px-4 sm:px-8 py-3 flex items-center justify-between gap-3 shadow-xs">
-        {/* Logo and Identity */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-500 flex items-center justify-center text-white shadow-md shadow-blue-500/25 ring-2 ring-blue-500/20 shrink-0">
-            <HardDrive className="w-5 h-5" />
+      {/* Top Navbar: Modern Frosted Glass Aesthetic with Theme Toggle & Storage Pill */}
+      <header className="sticky top-0 z-30 bg-white/85 dark:bg-slate-950/85 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800/80 px-3.5 sm:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-3 shadow-xs transition-colors duration-200">
+        {/* Logo, Identity & Small Area Storage Used Indicator */}
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-500 flex items-center justify-center text-white shadow-md shadow-blue-500/25 ring-2 ring-blue-500/20 shrink-0">
+            <HardDrive className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg font-extrabold tracking-tight bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 bg-clip-text text-transparent">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <h1 className="text-base sm:text-lg font-extrabold tracking-tight bg-gradient-to-r from-slate-900 dark:from-white via-slate-800 dark:via-slate-200 to-slate-900 dark:to-white bg-clip-text text-transparent">
                 TelePhotos
               </h1>
-              <span className="hidden xs:flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase bg-blue-50 text-blue-600 border border-blue-200/60 rounded-full">
-                <Zap className="w-3 h-3 text-blue-600" /> MTProto
+
+              {/* Protocol Badge */}
+              <span className="hidden md:flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-800/60 rounded-full">
+                <Zap className="w-3 h-3 text-blue-600 dark:text-blue-400" /> MTProto
+              </span>
+
+              {/* SMALL AREA: Compact Total Storage Indicator */}
+              <span
+                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80 rounded-full shadow-2xs"
+                title={`Total Cloud Storage Used: ${formatBytes(stats.totalBytes)} across ${stats.totalCount} files`}
+              >
+                <HardDrive className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                <span>{formatBytes(stats.totalBytes)}</span>
+                <span className="text-[10px] text-indigo-400 dark:text-indigo-400 font-normal hidden sm:inline">
+                  used
+                </span>
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 font-medium hidden sm:block">
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium hidden sm:block">
               Telegram Cloud • Infinite Free Storage
             </p>
           </div>
         </div>
 
-        {/* Search Bar on Desktop */}
+        {/* Search Bar on Desktop with Keyboard Shortcut Hint */}
         <div className="relative max-w-md w-full hidden md:block">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
           <input
+            ref={searchInputRef}
             type="text"
-            placeholder="Search photos, videos, music, PDFs..."
+            placeholder="Search media (Press '/' to focus)..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-9 py-2 text-sm bg-slate-100/90 hover:bg-slate-100 border border-transparent rounded-full focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 focus:outline-none transition-all placeholder:text-slate-400 font-normal"
+            className="w-full pl-10 pr-9 py-2 text-sm bg-slate-100/90 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800/90 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-transparent dark:border-slate-800 rounded-full focus:bg-white dark:focus:bg-slate-950 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 focus:outline-none transition-all font-normal"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 rounded-full"
             >
               <X className="w-4 h-4" />
             </button>
           )}
         </div>
 
-        {/* Header Actions */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        {/* Header Actions: Theme Switcher, Refresh, Upload, Lock */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5">
+          {/* Night Mode Toggle Button */}
+          <button
+            onClick={toggleTheme}
+            title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Night Mode'}
+            className="p-2 text-slate-600 dark:text-amber-400 hover:text-blue-600 dark:hover:text-amber-300 hover:bg-slate-100 dark:hover:bg-slate-900 active:scale-95 rounded-xl transition-all border border-transparent dark:border-slate-800"
+          >
+            {isDarkMode ? (
+              <Sun className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
+            ) : (
+              <Moon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600" />
+            )}
+          </button>
+
+          {/* Refresh Gallery Button */}
           <button
             onClick={fetchGallery}
             disabled={loading}
             title="Refresh gallery"
-            className="p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 active:scale-95 rounded-xl transition-all border border-transparent hover:border-blue-100"
+            className="p-2 text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 active:scale-95 rounded-xl transition-all border border-transparent dark:border-slate-800"
           >
-            <RefreshCw className={`w-4 h-4 sm:w-5 sm:h-5 ${loading ? 'animate-spin text-blue-600' : ''}`} />
+            <RefreshCw
+              className={`w-4 h-4 sm:w-5 sm:h-5 ${
+                loading ? 'animate-spin text-blue-600 dark:text-blue-400' : ''
+              }`}
+            />
           </button>
 
+          {/* Upload Button */}
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={!!uploadStatus}
-            className="flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:scale-95 rounded-full shadow-md shadow-blue-500/25 transition-all"
+            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:scale-95 rounded-full shadow-md shadow-blue-500/25 transition-all"
           >
             <Upload className="w-4 h-4" />
             <span className="hidden sm:inline">Upload</span>
           </button>
 
+          {/* Lock Vault Button */}
           <button
             onClick={() => handleLock('Vault locked successfully.')}
             title="Lock Vault"
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-600 hover:text-rose-600 bg-slate-100 hover:bg-rose-50 border border-slate-200/80 hover:border-rose-200 rounded-full transition-all active:scale-95"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 bg-slate-100 dark:bg-slate-900 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-slate-200/80 dark:border-slate-800 rounded-full transition-all active:scale-95"
           >
             <Lock className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Lock</span>
@@ -944,97 +1024,113 @@ export default function App() {
           className="hidden"
         />
 
-        {/* Interactive Overview & Storage Summary Chips */}
+        {/* 4 Dedicated Category Metric Cards (Photos, Videos, Audio, Documents) */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-          {/* Photos Card */}
+          {/* 1. Photos Card */}
           <div
             onClick={() => setActiveTab('images')}
             className={`p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between group ${
               activeTab === 'images'
-                ? 'bg-blue-50/90 border-blue-400 ring-2 ring-blue-500/20 shadow-xs'
-                : 'bg-white border-slate-200/80 hover:border-blue-300 hover:shadow-xs'
+                ? 'bg-blue-50/90 dark:bg-blue-950/40 border-blue-400 dark:border-blue-500 ring-2 ring-blue-500/20 shadow-xs'
+                : 'bg-white dark:bg-slate-900/90 border-slate-200/80 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-500/50 hover:shadow-xs'
             }`}
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+              <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:scale-105 transition-transform">
                 <ImageIcon className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-[10px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Photos</p>
-                <p className="text-base sm:text-lg font-bold text-slate-900 leading-tight">{stats.imageCount}</p>
+                <p className="text-[10px] sm:text-[11px] font-semibold text-slate-400 dark:text-slate-400 uppercase tracking-wider">
+                  Photos
+                </p>
+                <p className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-tight">
+                  {stats.imageCount}
+                </p>
               </div>
             </div>
             {activeTab === 'images' && (
-              <span className="w-2 h-2 rounded-full bg-blue-600 ring-4 ring-blue-100 shrink-0" />
+              <span className="w-2 h-2 rounded-full bg-blue-600 ring-4 ring-blue-100 dark:ring-blue-950 shrink-0" />
             )}
           </div>
 
-          {/* Videos Card */}
+          {/* 2. Videos Card */}
           <div
             onClick={() => setActiveTab('videos')}
             className={`p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between group ${
               activeTab === 'videos'
-                ? 'bg-purple-50/90 border-purple-400 ring-2 ring-purple-500/20 shadow-xs'
-                : 'bg-white border-slate-200/80 hover:border-purple-300 hover:shadow-xs'
+                ? 'bg-purple-50/90 dark:bg-purple-950/40 border-purple-400 dark:border-purple-500 ring-2 ring-purple-500/20 shadow-xs'
+                : 'bg-white dark:bg-slate-900/90 border-slate-200/80 dark:border-slate-800 hover:border-purple-300 dark:hover:border-purple-500/50 hover:shadow-xs'
             }`}
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+              <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-950/80 text-purple-600 dark:text-purple-400 flex items-center justify-center group-hover:scale-105 transition-transform">
                 <Film className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-[10px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Videos</p>
-                <p className="text-base sm:text-lg font-bold text-slate-900 leading-tight">{stats.videoCount}</p>
+                <p className="text-[10px] sm:text-[11px] font-semibold text-slate-400 dark:text-slate-400 uppercase tracking-wider">
+                  Videos
+                </p>
+                <p className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-tight">
+                  {stats.videoCount}
+                </p>
               </div>
             </div>
             {activeTab === 'videos' && (
-              <span className="w-2 h-2 rounded-full bg-purple-600 ring-4 ring-purple-100 shrink-0" />
+              <span className="w-2 h-2 rounded-full bg-purple-600 ring-4 ring-purple-100 dark:ring-purple-950 shrink-0" />
             )}
           </div>
 
-          {/* Docs & Audio Card */}
+          {/* 3. Music & Audio Card */}
           <div
-            onClick={() => setActiveTab(activeTab === 'documents' ? 'audio' : 'documents')}
+            onClick={() => setActiveTab('audio')}
             className={`p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between group ${
-              activeTab === 'documents' || activeTab === 'audio'
-                ? 'bg-amber-50/90 border-amber-400 ring-2 ring-amber-500/20 shadow-xs'
-                : 'bg-white border-slate-200/80 hover:border-amber-300 hover:shadow-xs'
+              activeTab === 'audio'
+                ? 'bg-emerald-50/90 dark:bg-emerald-950/40 border-emerald-400 dark:border-emerald-500 ring-2 ring-emerald-500/20 shadow-xs'
+                : 'bg-white dark:bg-slate-900/90 border-slate-200/80 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-500/50 hover:shadow-xs'
             }`}
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+                <Music className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[10px] sm:text-[11px] font-semibold text-slate-400 dark:text-slate-400 uppercase tracking-wider">
+                  Music & Audio
+                </p>
+                <p className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-tight">
+                  {stats.audioCount}
+                </p>
+              </div>
+            </div>
+            {activeTab === 'audio' && (
+              <span className="w-2 h-2 rounded-full bg-emerald-600 ring-4 ring-emerald-100 dark:ring-emerald-950 shrink-0" />
+            )}
+          </div>
+
+          {/* 4. Documents Card */}
+          <div
+            onClick={() => setActiveTab('documents')}
+            className={`p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between group ${
+              activeTab === 'documents'
+                ? 'bg-amber-50/90 dark:bg-amber-950/40 border-amber-400 dark:border-amber-500 ring-2 ring-amber-500/20 shadow-xs'
+                : 'bg-white dark:bg-slate-900/90 border-slate-200/80 dark:border-slate-800 hover:border-amber-300 dark:hover:border-amber-500/50 hover:shadow-xs'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover:scale-105 transition-transform">
                 <FileText className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-[10px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Docs & Audio</p>
-                <p className="text-base sm:text-lg font-bold text-slate-900 leading-tight">{stats.docCount + stats.audioCount}</p>
+                <p className="text-[10px] sm:text-[11px] font-semibold text-slate-400 dark:text-slate-400 uppercase tracking-wider">
+                  Documents
+                </p>
+                <p className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-tight">
+                  {stats.docCount}
+                </p>
               </div>
             </div>
-            {(activeTab === 'documents' || activeTab === 'audio') && (
-              <span className="w-2 h-2 rounded-full bg-amber-600 ring-4 ring-amber-100 shrink-0" />
-            )}
-          </div>
-
-          {/* Cloud Storage Card */}
-          <div
-            onClick={() => setActiveTab('all')}
-            className={`p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between group ${
-              activeTab === 'all'
-                ? 'bg-indigo-50/90 border-indigo-400 ring-2 ring-indigo-500/20 shadow-xs'
-                : 'bg-white border-slate-200/80 hover:border-indigo-300 hover:shadow-xs'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center group-hover:scale-105 transition-transform">
-                <HardDrive className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-[10px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Storage Used</p>
-                <p className="text-base sm:text-lg font-bold text-slate-900 leading-tight">{formatBytes(stats.totalBytes)}</p>
-              </div>
-            </div>
-            {activeTab === 'all' && (
-              <span className="w-2 h-2 rounded-full bg-indigo-600 ring-4 ring-indigo-100 shrink-0" />
+            {activeTab === 'documents' && (
+              <span className="w-2 h-2 rounded-full bg-amber-600 ring-4 ring-amber-100 dark:ring-amber-950 shrink-0" />
             )}
           </div>
         </div>
@@ -1042,55 +1138,55 @@ export default function App() {
         {/* Upload Zone: Compact & Streamlined Banner / Active Progress */}
         {uploadStatus ? (
           /* ACCURATE TWO-PHASE UPLOAD DASHBOARD */
-          <div className="bg-white border border-blue-200 rounded-3xl p-5 sm:p-6 shadow-md text-center max-w-2xl mx-auto w-full animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-900 rounded-3xl p-5 sm:p-6 shadow-md text-center max-w-2xl mx-auto w-full animate-in fade-in duration-200">
             <div className="flex items-center justify-center gap-2 mb-2">
-              <span className="px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700 animate-pulse">
+              <span className="px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 dark:bg-blue-950/90 text-blue-700 dark:text-blue-300 animate-pulse">
                 {uploadStatus.phase === 'client'
                   ? 'Phase 1 of 2: Buffering to Server'
                   : 'Phase 2 of 2: Streaming to Telegram MTProto'}
               </span>
-              <span className="text-xs text-slate-500 font-medium">
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                 {formatBytes(uploadStatus.totalSize)}
               </span>
             </div>
 
-            <h3 className="font-bold text-slate-900 text-base sm:text-lg mb-1 truncate max-w-md mx-auto">
+            <h3 className="font-bold text-slate-900 dark:text-slate-100 text-base sm:text-lg mb-1 truncate max-w-md mx-auto">
               {uploadStatus.fileName}
             </h3>
 
             {/* Real-time 2-Phase Progress Display */}
-            <div className="w-full bg-slate-50 rounded-2xl p-4 sm:p-5 mt-3 border border-slate-200/80 text-left">
+            <div className="w-full bg-slate-50 dark:bg-slate-950 rounded-2xl p-4 sm:p-5 mt-3 border border-slate-200/80 dark:border-slate-800 text-left">
               {/* Step 1: Client to Server Buffer */}
               <div className="mb-4">
                 <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
-                  <span className="flex items-center gap-1.5 text-slate-700">
+                  <span className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200">
                     {uploadStatus.clientPercent === 100 ? (
                       <Check className="w-4 h-4 text-emerald-500" />
                     ) : (
-                      <Upload className="w-3.5 h-3.5 text-blue-600 animate-bounce" />
+                      <Upload className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 animate-bounce" />
                     )}
                     1. Client ➔ Local Server Buffer
                   </span>
-                  <span className="text-blue-600 font-mono">
+                  <span className="text-blue-600 dark:text-blue-400 font-mono">
                     {uploadStatus.clientPercent}%
                   </span>
                 </div>
-                <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
                   <div
                     className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
                     style={{ width: `${uploadStatus.clientPercent}%` }}
                   />
                 </div>
-                <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1">
+                <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mt-1">
                   <span className="flex items-center gap-1">
                     <Gauge className="w-3 h-3 text-slate-400" /> Speed:{' '}
-                    <strong className="text-slate-700 font-mono">
+                    <strong className="text-slate-700 dark:text-slate-200 font-mono">
                       {uploadStatus.clientSpeed}
                     </strong>
                   </span>
                   <span className="flex items-center gap-1">
                     <Clock className="w-3 h-3 text-slate-400" /> ETA:{' '}
-                    <strong className="text-slate-700 font-mono">
+                    <strong className="text-slate-700 dark:text-slate-200 font-mono">
                       {uploadStatus.clientEta}
                     </strong>
                   </span>
@@ -1100,7 +1196,7 @@ export default function App() {
               {/* Step 2: Server to Telegram MTProto Storage */}
               <div>
                 <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
-                  <span className="flex items-center gap-1.5 text-slate-700">
+                  <span className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200">
                     {uploadStatus.telegramPercent === 100 ? (
                       <Check className="w-4 h-4 text-emerald-500" />
                     ) : uploadStatus.phase === 'telegram' ? (
@@ -1110,26 +1206,26 @@ export default function App() {
                     )}
                     2. Server ➔ Telegram MTProto Cloud Stream
                   </span>
-                  <span className="text-indigo-600 font-mono">
+                  <span className="text-indigo-600 dark:text-indigo-400 font-mono">
                     {uploadStatus.telegramPercent}%
                   </span>
                 </div>
-                <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
                   <div
                     className="bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 h-2.5 rounded-full transition-all duration-300"
                     style={{ width: `${uploadStatus.telegramPercent}%` }}
                   />
                 </div>
-                <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1">
+                <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mt-1">
                   <span className="flex items-center gap-1">
                     <Gauge className="w-3 h-3 text-slate-400" /> Telegram Speed:{' '}
-                    <strong className="text-indigo-600 font-mono">
+                    <strong className="text-indigo-600 dark:text-indigo-400 font-mono">
                       {uploadStatus.telegramSpeed}
                     </strong>
                   </span>
                   <span className="flex items-center gap-1">
                     <Clock className="w-3 h-3 text-slate-400" /> ETA:{' '}
-                    <strong className="text-indigo-600 font-mono">
+                    <strong className="text-indigo-600 dark:text-indigo-400 font-mono">
                       {uploadStatus.telegramEta || 'Estimating...'}
                     </strong>
                   </span>
@@ -1144,25 +1240,25 @@ export default function App() {
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className="group relative rounded-2xl p-4 sm:p-5 transition-all duration-200 cursor-pointer border-2 border-dashed border-slate-200/90 hover:border-blue-400 bg-white hover:bg-blue-50/20 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs hover:shadow-md"
+            className="group relative rounded-2xl p-4 sm:p-5 transition-all duration-200 cursor-pointer border-2 border-dashed border-slate-200/90 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500 bg-white dark:bg-slate-900/90 hover:bg-blue-50/20 dark:hover:bg-slate-800/40 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs hover:shadow-md"
           >
             <div className="flex items-center gap-3 sm:gap-4 text-center sm:text-left">
-              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white flex items-center justify-center shrink-0 transition-colors duration-200">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 group-hover:bg-blue-600 group-hover:text-white flex items-center justify-center shrink-0 transition-colors duration-200">
                 <Upload className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
-                  Upload photos, videos, or documents
+                <p className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                  Upload photos, videos, music, or documents
                 </p>
-                <p className="text-[11px] text-slate-400 mt-0.5">
-                  Click to browse or drag & drop files • Direct MTProto streaming up to 2GB per file
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
+                  Click to browse or drop files anywhere • Direct MTProto streaming up to 2GB per file
                 </p>
               </div>
             </div>
 
             <button
               type="button"
-              className="px-4 py-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 group-hover:bg-blue-600 group-hover:text-white rounded-xl transition-all shrink-0 flex items-center gap-1.5 shadow-2xs"
+              className="px-4 py-2 text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/80 hover:bg-blue-100 dark:hover:bg-blue-900/60 group-hover:bg-blue-600 group-hover:text-white rounded-xl transition-all shrink-0 flex items-center gap-1.5 shadow-2xs"
             >
               <Upload className="w-3.5 h-3.5" /> Select Files
             </button>
@@ -1170,15 +1266,15 @@ export default function App() {
         )}
 
         {/* Sticky Controls Bar: Category Pills + Search + Sort + View Switcher */}
-        <div className="sticky top-[58px] sm:top-[65px] z-20 bg-slate-50/95 backdrop-blur-xl py-2.5 px-0.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/70">
+        <div className="sticky top-[56px] sm:top-[65px] z-20 bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-xl py-2.5 px-0.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/70 dark:border-slate-800/70 transition-colors duration-200">
           {/* Category Tabs: Photos, Videos, Audio, PDFs & Docs */}
-          <div className="flex items-center gap-1.5 p-1 bg-slate-200/70 rounded-2xl overflow-x-auto no-scrollbar max-w-full">
+          <div className="flex items-center gap-1.5 p-1 bg-slate-200/70 dark:bg-slate-900 border dark:border-slate-800/80 rounded-2xl overflow-x-auto no-scrollbar max-w-full">
             <button
               onClick={() => setActiveTab('all')}
               className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                 activeTab === 'all'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               All ({stats.totalCount})
@@ -1188,7 +1284,7 @@ export default function App() {
               className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 activeTab === 'images'
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25'
-                  : 'text-slate-600 hover:text-slate-900'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <ImageIcon className="w-3.5 h-3.5" /> Photos ({stats.imageCount})
@@ -1198,7 +1294,7 @@ export default function App() {
               className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 activeTab === 'videos'
                   ? 'bg-purple-600 text-white shadow-md shadow-purple-600/25'
-                  : 'text-slate-600 hover:text-slate-900'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <Film className="w-3.5 h-3.5" /> Videos ({stats.videoCount})
@@ -1208,7 +1304,7 @@ export default function App() {
               className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 activeTab === 'audio'
                   ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/25'
-                  : 'text-slate-600 hover:text-slate-900'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <Music className="w-3.5 h-3.5" /> Audio ({stats.audioCount})
@@ -1218,7 +1314,7 @@ export default function App() {
               className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 activeTab === 'documents'
                   ? 'bg-amber-600 text-white shadow-md shadow-amber-600/25'
-                  : 'text-slate-600 hover:text-slate-900'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <FileText className="w-3.5 h-3.5" /> Docs ({stats.docCount})
@@ -1229,18 +1325,18 @@ export default function App() {
           <div className="flex items-center gap-2 w-full sm:w-auto">
             {/* Search bar on mobile */}
             <div className="relative flex-1 md:hidden">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
               <input
                 type="text"
                 placeholder="Search media..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-8 py-1.5 text-xs bg-white border border-slate-200/90 rounded-xl focus:outline-none focus:border-blue-500 shadow-2xs"
+                className="w-full pl-9 pr-8 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl focus:outline-none focus:border-blue-500 shadow-2xs"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -1248,30 +1344,30 @@ export default function App() {
             </div>
 
             {/* Sort Selector Dropdown */}
-            <div className="flex items-center bg-white border border-slate-200/80 rounded-xl px-2 py-1 shadow-2xs shrink-0">
-              <ArrowUpDown className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+            <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl px-2 py-1 shadow-2xs shrink-0">
+              <ArrowUpDown className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="bg-transparent text-xs font-semibold text-slate-700 pl-1.5 pr-1 py-0.5 focus:outline-none cursor-pointer"
+                className="bg-transparent text-xs font-semibold text-slate-700 dark:text-slate-200 pl-1.5 pr-1 py-0.5 focus:outline-none cursor-pointer"
                 title="Sort items"
               >
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-                <option value="largest">Largest Size</option>
-                <option value="smallest">Smallest Size</option>
-                <option value="name">Name (A-Z)</option>
+                <option value="newest" className="dark:bg-slate-900">Newest First</option>
+                <option value="oldest" className="dark:bg-slate-900">Oldest First</option>
+                <option value="largest" className="dark:bg-slate-900">Largest Size</option>
+                <option value="smallest" className="dark:bg-slate-900">Smallest Size</option>
+                <option value="name" className="dark:bg-slate-900">Name (A-Z)</option>
               </select>
             </div>
 
             {/* Layout Density Switcher: Square Grid vs Masonry Flow */}
-            <div className="flex items-center bg-slate-200/80 p-0.5 rounded-xl shrink-0 shadow-2xs">
+            <div className="flex items-center bg-slate-200/80 dark:bg-slate-900 border dark:border-slate-800/80 p-0.5 rounded-xl shrink-0 shadow-2xs">
               <button
                 onClick={() => setGridMode('grid')}
                 className={`p-1.5 rounded-lg transition-all ${
                   gridMode === 'grid'
-                    ? 'bg-white text-blue-600 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
                 title="Google Photos Square Grid (3 columns on mobile)"
               >
@@ -1281,8 +1377,8 @@ export default function App() {
                 onClick={() => setGridMode('columns')}
                 className={`p-1.5 rounded-lg transition-all ${
                   gridMode === 'columns'
-                    ? 'bg-white text-blue-600 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
                 title="Masonry Flow view"
               >
@@ -1299,20 +1395,20 @@ export default function App() {
             {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
               <div
                 key={n}
-                className="aspect-square bg-slate-200/70 rounded-xl sm:rounded-2xl animate-pulse"
+                className="aspect-square bg-slate-200/70 dark:bg-slate-900 border dark:border-slate-800/60 rounded-xl sm:rounded-2xl animate-pulse"
               />
             ))}
           </div>
         ) : filteredFiles.length === 0 ? (
           // Empty State
-          <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center flex flex-col items-center justify-center my-6">
-            <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-12 text-center flex flex-col items-center justify-center my-6">
+            <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-500 mb-4">
               <HardDrive className="w-8 h-8" />
             </div>
-            <h3 className="text-base font-semibold text-slate-800">
+            <h3 className="text-base font-semibold text-slate-800 dark:text-slate-100">
               {searchQuery ? 'No matching files found' : 'No files in this category'}
             </h3>
-            <p className="text-xs text-slate-500 max-w-sm mt-1 mb-5">
+            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mt-1 mb-5">
               {searchQuery
                 ? `No items match the search query "${searchQuery}".`
                 : 'Upload your photos, videos, music files, or PDFs above to store them in your private Telegram channel.'}
@@ -1320,14 +1416,14 @@ export default function App() {
             {searchQuery ? (
               <button
                 onClick={() => setSearchQuery('')}
-                className="px-4 py-2 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors"
+                className="px-4 py-2 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/80 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-xl transition-colors"
               >
                 Clear Search
               </button>
             ) : (
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="px-4 py-2 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors"
+                className="px-4 py-2 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/80 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-xl transition-colors"
               >
                 Select Files to Upload
               </button>
@@ -1339,13 +1435,13 @@ export default function App() {
             {timelineSections.map((section) => (
               <div key={section.title} className="flex flex-col gap-3">
                 {/* Section Header */}
-                <div className="py-2.5 flex items-center justify-between border-b border-slate-200/60">
+                <div className="py-2.5 flex items-center justify-between border-b border-slate-200/60 dark:border-slate-800/80">
                   <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-blue-600" />
-                    <h3 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
+                    <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 tracking-tight">
                       {section.title}
                     </h3>
-                    <span className="text-xs font-medium text-slate-400">
+                    <span className="text-xs font-medium text-slate-400 dark:text-slate-500">
                       ({section.items.length}{' '}
                       {section.items.length === 1 ? 'item' : 'items'})
                     </span>
@@ -1369,7 +1465,7 @@ export default function App() {
                       <div
                         key={file.id || file.telegramMessageId}
                         onClick={() => setSelectedFile(file)}
-                        className={`group relative overflow-hidden bg-slate-900 shadow-sm hover:shadow-xl transition-all duration-200 cursor-pointer transform active:scale-95 ${
+                        className={`group relative overflow-hidden bg-slate-900 dark:bg-slate-900/90 shadow-sm hover:shadow-xl transition-all duration-200 cursor-pointer transform active:scale-95 ${
                           isSquare
                             ? 'aspect-square rounded-xl sm:rounded-2xl'
                             : 'break-inside-avoid rounded-2xl hover:-translate-y-1'
@@ -1377,9 +1473,11 @@ export default function App() {
                       >
                         {/* 1. Video Rendering */}
                         {fileType === 'video' && (
-                          <div className={`relative bg-slate-950 flex items-center justify-center overflow-hidden ${
-                            isSquare ? 'w-full h-full' : 'aspect-[4/5] sm:aspect-square'
-                          }`}>
+                          <div
+                            className={`relative bg-slate-950 flex items-center justify-center overflow-hidden ${
+                              isSquare ? 'w-full h-full' : 'aspect-[4/5] sm:aspect-square'
+                            }`}
+                          >
                             <video
                               src={streamUrl}
                               preload="metadata"
@@ -1401,22 +1499,27 @@ export default function App() {
 
                         {/* 2. Photo Rendering */}
                         {fileType === 'image' && (
-                          <div className={`relative bg-slate-100 flex items-center justify-center overflow-hidden ${
-                            isSquare ? 'w-full h-full' : 'min-h-[140px]'
-                          }`}>
+                          <div
+                            className={`relative bg-slate-100 dark:bg-slate-900 flex items-center justify-center overflow-hidden ${
+                              isSquare ? 'w-full h-full' : 'min-h-[140px]'
+                            }`}
+                          >
                             <img
                               src={streamUrl}
                               alt={file.fileName}
                               loading="lazy"
+                              decoding="async"
                               onError={(e) => {
                                 e.target.style.display = 'none';
                                 if (e.target.nextSibling) {
                                   e.target.nextSibling.style.display = 'flex';
                                 }
                               }}
-                              className={`w-full ${isSquare ? 'h-full object-cover' : 'h-auto object-cover'} group-hover:scale-105 transition-transform duration-300`}
+                              className={`w-full ${
+                                isSquare ? 'h-full object-cover' : 'h-auto object-cover'
+                              } group-hover:scale-105 transition-transform duration-300`}
                             />
-                            <div className="hidden absolute inset-0 bg-slate-800 text-slate-400 flex-col items-center justify-center text-[10px] p-2 text-center">
+                            <div className="hidden absolute inset-0 bg-slate-900 text-slate-400 flex flex-col items-center justify-center text-[10px] p-2 text-center">
                               <ImageIcon className="w-5 h-5 text-slate-500 mb-1" />
                               <span className="truncate max-w-full">{file.fileName}</span>
                             </div>
@@ -1437,9 +1540,11 @@ export default function App() {
 
                         {/* 4. PDF Document Rendering */}
                         {fileType === 'pdf' && (
-                          <div className={`relative bg-gradient-to-tr from-rose-950 via-slate-900 to-red-900 p-2 sm:p-4 flex flex-col items-center justify-center text-center ${
-                            isSquare ? 'w-full h-full' : 'aspect-[4/5]'
-                          }`}>
+                          <div
+                            className={`relative bg-gradient-to-tr from-rose-950 via-slate-900 to-red-900 p-2 sm:p-4 flex flex-col items-center justify-center text-center ${
+                              isSquare ? 'w-full h-full' : 'aspect-[4/5]'
+                            }`}
+                          >
                             <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mb-1.5 sm:mb-3 group-hover:scale-110 transition-transform">
                               <FileText className="w-5 h-5 sm:w-7 sm:h-7" />
                             </div>
@@ -1451,9 +1556,11 @@ export default function App() {
 
                         {/* 5. Generic Document / Archive Rendering */}
                         {fileType === 'document' && (
-                          <div className={`relative bg-gradient-to-tr from-amber-950 via-slate-900 to-amber-900 p-2 sm:p-4 flex flex-col items-center justify-center text-center ${
-                            isSquare ? 'w-full h-full' : 'aspect-[4/5]'
-                          }`}>
+                          <div
+                            className={`relative bg-gradient-to-tr from-amber-950 via-slate-900 to-amber-900 p-2 sm:p-4 flex flex-col items-center justify-center text-center ${
+                              isSquare ? 'w-full h-full' : 'aspect-[4/5]'
+                            }`}
+                          >
                             <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center mb-1.5 sm:mb-3 group-hover:scale-110 transition-transform">
                               <File className="w-5 h-5 sm:w-7 sm:h-7" />
                             </div>
@@ -1511,7 +1618,7 @@ export default function App() {
       {showBackToTop && (
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="fixed bottom-6 left-6 z-40 p-3 rounded-full bg-slate-900/85 hover:bg-slate-900 text-white backdrop-blur-md shadow-xl transition-all duration-200 active:scale-90 flex items-center justify-center border border-white/10"
+          className="fixed bottom-6 left-6 z-40 p-3 rounded-full bg-slate-900/85 dark:bg-slate-800/90 hover:bg-slate-900 dark:hover:bg-slate-700 text-white backdrop-blur-md shadow-xl transition-all duration-200 active:scale-90 flex items-center justify-center border border-white/10 dark:border-slate-700"
           title="Back to Top"
         >
           <ChevronUp className="w-5 h-5" />
