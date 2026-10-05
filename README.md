@@ -107,29 +107,6 @@ The compiled APK will be at `client/android/app/build/outputs/apk/debug/app-debu
 
 ---
 
-## 📦 GitHub Release Checklist (What to Upload)
-
-When publishing a public release on GitHub, follow this safety checklist:
-
-### ✅ Safe to Upload to GitHub (Code Repository)
-- [x] Full source code (`client/src`, `server/src`, `public/`)
-- [x] [`render.yaml`](render.yaml) *(with `sync: false` for secrets)*
-- [x] [`Dockerfile`](server/Dockerfile), [`docker-compose.yml`](docker-compose.yml)
-- [x] [`.env.example`](.env.example) *(sample template with placeholder values)*
-- [x] [`README.md`](README.md), [`DEPLOYMENT.md`](DEPLOYMENT.md), [`LICENSE`](LICENSE)
-
-### ❌ NEVER Upload to GitHub (Ignored by `.gitignore`)
-- [ ] `.env` or `server/.env` *(contains real passwords, bot tokens, or API hashes)*
-- [ ] `node_modules/` *(installed dependencies)*
-- [ ] `client/android/.gradle/` or `client/android/app/build/` *(huge temporary binaries)*
-- [ ] Private keystores (`*.keystore`, `*.jks`)
-
-### 🏷️ Creating a GitHub Release (Attaching the APK)
-1. Go to your GitHub repository $\rightarrow$ click **Releases** (right sidebar) $\rightarrow$ **Draft a new release**.
-2. Tag version: `v1.0.0`.
-3. Release title: `TelePhotos Vault v1.0.0 - Android APK & Cloud Drive`.
-4. Drag and drop `TelePhotos-v1.0.0.apk` into the **Attach binaries** box.
-5. Click **Publish release**. Anyone can now download the APK directly!
 
 ---
 
