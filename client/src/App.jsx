@@ -756,22 +756,35 @@ export default function App() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 relative overflow-hidden selection:bg-blue-600 selection:text-white">
-        {/* Ambient background glow effects */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gradient-to-tr from-blue-600/20 via-indigo-600/20 to-purple-600/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-10 left-10 w-72 h-72 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
+        {/* Ambient cosmic radial glow auras */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-tr from-blue-600/20 via-indigo-600/15 to-purple-600/10 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-10 left-10 w-80 h-80 bg-blue-500/10 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute top-10 right-10 w-72 h-72 bg-indigo-500/10 rounded-full blur-[90px] pointer-events-none" />
 
-        {/* Lock Modal Card */}
-        <div className="relative w-full max-w-md bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-3xl p-8 shadow-2xl shadow-black/80 flex flex-col items-center text-center z-10">
-          {/* Glowing Vault Icon */}
-          <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white flex items-center justify-center mb-6 shadow-xl shadow-blue-500/25 border border-blue-400/30">
-            <Lock className="w-9 h-9" />
+        {/* Lock Modal Card - Premium Glassmorphism */}
+        <div className="relative w-full max-w-md bg-slate-900/80 backdrop-blur-2xl border border-white/10 rounded-3xl p-7 sm:p-9 shadow-[0_20px_70px_-15px_rgba(0,0,0,0.8)] flex flex-col items-center text-center z-10">
+          {/* Subtle Top Glowing Line */}
+          <div className="absolute -top-[1px] left-1/2 -translate-x-1/2 w-48 h-[2px] bg-gradient-to-r from-transparent via-blue-500 to-transparent pointer-events-none" />
+
+          {/* Glowing Vault Icon with ambient ring */}
+          <div className="relative mb-6">
+            <div className="absolute inset-0 bg-blue-500/30 rounded-3xl blur-xl animate-pulse" />
+            <div className="relative w-20 h-20 rounded-3xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-400 p-[1.5px] shadow-2xl shadow-blue-500/30">
+              <div className="w-full h-full bg-slate-950/90 rounded-[22px] flex items-center justify-center text-white">
+                <Lock className="w-9 h-9 text-blue-400" />
+              </div>
+            </div>
           </div>
 
-          <h2 className="text-2xl font-extrabold text-white tracking-tight mb-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[11px] font-semibold tracking-wide uppercase mb-3">
+            <Zap className="w-3 h-3" /> Telegram MTProto Storage
+          </div>
+
+          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight mb-2">
             TelePhotos Vault
           </h2>
-          <p className="text-xs text-slate-400 mb-6 max-w-xs leading-relaxed">
-            Personal Cloud Storage powered by Telegram MTProto & PostgreSQL. Enter master password to access your data.
+          <p className="text-xs sm:text-sm text-slate-400 mb-6 max-w-xs leading-relaxed font-normal">
+            Personal Cloud Storage with infinite capacity. Unlock your vault to access your photos and files.
           </p>
 
           <form onSubmit={handleUnlock} className="w-full flex flex-col gap-4">
@@ -793,11 +806,11 @@ export default function App() {
                   placeholder="Enter vault password"
                   autoFocus
                   disabled={isUnlocking}
-                  className={`w-full pl-10 pr-11 py-3 text-sm bg-slate-950 border ${
+                  className={`w-full pl-10 pr-11 py-3 text-sm bg-slate-950/80 border ${
                     authError
-                      ? 'border-rose-500 focus:ring-rose-500'
-                      : 'border-slate-800 focus:border-blue-500 focus:ring-blue-500/20'
-                  } rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:ring-4 transition-all`}
+                      ? 'border-rose-500 focus:ring-rose-500/30'
+                      : 'border-slate-800/90 focus:border-blue-500 focus:ring-blue-500/20'
+                  } rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:ring-4 transition-all shadow-inner`}
                 />
                 <button
                   type="button"
@@ -815,7 +828,7 @@ export default function App() {
             </div>
 
             {authError && (
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs text-left">
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs text-left animate-in fade-in duration-200">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 <span>{authError}</span>
               </div>
@@ -829,17 +842,17 @@ export default function App() {
                   onChange={(e) => setRememberDevice(e.target.checked)}
                   className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-blue-600 focus:ring-blue-500/30"
                 />
-                <span>Remember this device</span>
+                <span className="text-slate-300">Remember this device</span>
               </label>
-              <span className="text-[11px] text-slate-500 flex items-center gap-1">
-                <ShieldCheck className="w-3 h-3 text-blue-400" /> Secure
+              <span className="text-[11px] text-slate-500 flex items-center gap-1 font-medium">
+                <ShieldCheck className="w-3.5 h-3.5 text-blue-400" /> 256-bit Encrypted
               </span>
             </div>
 
             <button
               type="submit"
               disabled={isUnlocking || !passwordInput.trim()}
-              className="mt-2 w-full py-3.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold rounded-2xl shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 transition-all transform active:scale-[0.98]"
+              className="mt-1 w-full py-3.5 px-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold rounded-2xl shadow-xl shadow-blue-500/25 flex items-center justify-center gap-2 transition-all transform active:scale-[0.98] group"
             >
               {isUnlocking ? (
                 <>
@@ -848,7 +861,7 @@ export default function App() {
                 </>
               ) : (
                 <>
-                  <ShieldCheck className="w-4 h-4" />
+                  <ShieldCheck className="w-4 h-4 group-hover:scale-110 transition-transform" />
                   <span>Unlock Vault</span>
                 </>
               )}
@@ -856,7 +869,7 @@ export default function App() {
           </form>
 
           {/* Prominent Forgot / Reset Password Trigger */}
-          <div className="w-full mt-5 pt-5 border-t border-slate-800/90 flex flex-col gap-2">
+          <div className="w-full mt-5 pt-5 border-t border-slate-800/80 flex flex-col gap-2">
             <button
               type="button"
               onClick={() => {
@@ -864,7 +877,7 @@ export default function App() {
                 setShowPasswordModal(true);
                 setAuthError('');
               }}
-              className="w-full py-2.5 px-4 bg-slate-800/90 hover:bg-slate-800 hover:border-blue-500/70 border border-slate-700/80 text-blue-400 hover:text-white text-xs font-bold rounded-2xl flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.98] group"
+              className="w-full py-2.5 px-4 bg-slate-800/80 hover:bg-slate-800 hover:border-blue-500/60 border border-slate-700/70 text-blue-400 hover:text-white text-xs font-bold rounded-2xl flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.98] group"
             >
               <Key className="w-4 h-4 text-amber-400 group-hover:rotate-12 transition-transform shrink-0" />
               <span>Forgot Password? Reset with OTP / Master Key</span>
@@ -912,12 +925,12 @@ export default function App() {
   return (
     <div
       className={`min-h-screen ${
-        isDarkMode ? 'dark bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-800'
+        isDarkMode ? 'dark bg-[#080c14] text-slate-100' : 'bg-[#f8fafc] text-slate-800'
       } flex flex-col antialiased selection:bg-blue-500 selection:text-white pb-20 sm:pb-10 transition-colors duration-200`}
     >
       {/* Full-Window Drag and Drop Active Overlay */}
       {isDragging && (
-        <div className="fixed inset-0 z-50 bg-blue-600/85 backdrop-blur-md flex flex-col items-center justify-center text-white pointer-events-none animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 bg-blue-600/90 backdrop-blur-md flex flex-col items-center justify-center text-white pointer-events-none animate-in fade-in duration-200">
           <div className="p-8 sm:p-12 rounded-3xl bg-white/10 border-2 border-dashed border-white/60 flex flex-col items-center max-w-md text-center shadow-2xl scale-105 transition-transform mx-4">
             <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center mb-4 animate-bounce shadow-lg">
               <Upload className="w-10 h-10 text-white" />
@@ -934,7 +947,7 @@ export default function App() {
       {toast && (
         <div
           className={`fixed bottom-8 sm:bottom-6 left-1/2 -translate-x-1/2 sm:left-auto sm:right-6 sm:translate-x-0 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl text-white transition-all transform animate-in slide-in-from-bottom-5 duration-300 max-w-[92vw] sm:max-w-md ${
-            toast.type === 'error' ? 'bg-rose-600' : 'bg-slate-900 dark:bg-slate-800 border dark:border-slate-700'
+            toast.type === 'error' ? 'bg-rose-600' : 'bg-slate-900 dark:bg-slate-850 border dark:border-slate-800'
           }`}
         >
           {toast.type === 'error' ? (
@@ -953,37 +966,38 @@ export default function App() {
       )}
 
       {/* Top Navbar: Modern Frosted Glass Aesthetic with Theme Toggle & Storage Pill */}
-      <header className="sticky top-0 z-30 bg-white/85 dark:bg-slate-950/85 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800/80 px-3.5 sm:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-3 shadow-xs transition-colors duration-200">
+      <header className="sticky top-0 z-30 bg-white/80 dark:bg-[#080c14]/85 backdrop-blur-2xl border-b border-slate-200/80 dark:border-slate-850 px-3.5 sm:px-8 py-2.5 sm:py-3.5 flex items-center justify-between gap-3 shadow-xs transition-colors duration-200">
         {/* Logo, Identity & Small Area Storage Used Indicator */}
-        <div className="flex items-center gap-2.5 sm:gap-3">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-500 flex items-center justify-center text-white shadow-md shadow-blue-500/25 ring-2 ring-blue-500/20 shrink-0">
-            <HardDrive className="w-4 h-4 sm:w-5 sm:h-5" />
+        <div className="flex items-center gap-3 sm:gap-3.5">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-400 flex items-center justify-center text-white shadow-md shadow-blue-500/25 ring-2 ring-blue-500/20 shrink-0">
+            <HardDrive className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <h1 className="text-base sm:text-lg font-extrabold tracking-tight bg-gradient-to-r from-slate-900 dark:from-white via-slate-800 dark:via-slate-200 to-slate-900 dark:to-white bg-clip-text text-transparent">
+            <div className="flex items-center gap-2 sm:gap-2.5">
+              <h1 className="text-base sm:text-lg font-black tracking-tight bg-gradient-to-r from-slate-900 dark:from-white via-slate-800 dark:via-slate-100 to-slate-900 dark:to-white bg-clip-text text-transparent">
                 TelePhotos
               </h1>
 
               {/* Protocol Badge */}
-              <span className="hidden md:flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-800/60 rounded-full">
-                <Zap className="w-3 h-3 text-blue-600 dark:text-blue-400" /> MTProto
+              <span className="hidden md:inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 border border-blue-200/70 dark:border-blue-800/70 rounded-full shadow-2xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                MTProto Cloud
               </span>
 
               {/* SMALL AREA: Compact Total Storage Indicator */}
               <span
-                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80 rounded-full shadow-2xs"
+                className="flex items-center gap-1.5 px-2.5 py-0.5 text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80 rounded-full shadow-2xs"
                 title={`Total Cloud Storage Used: ${formatBytes(stats.totalBytes)} across ${stats.totalCount} files`}
               >
                 <HardDrive className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
                 <span>{formatBytes(stats.totalBytes)}</span>
                 <span className="text-[10px] text-indigo-400 dark:text-indigo-400 font-normal hidden sm:inline">
-                  used
+                  stored
                 </span>
               </span>
             </div>
             <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium hidden sm:block">
-              Telegram Cloud • Infinite Free Storage
+              Telegram Infinite Free Cloud • Zero Compression
             </p>
           </div>
         </div>
@@ -994,23 +1008,27 @@ export default function App() {
           <input
             ref={searchInputRef}
             type="text"
-            placeholder="Search media (Press '/' to focus)..."
+            placeholder="Search files (Press '/' to focus)..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-9 py-2 text-sm bg-slate-100/90 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800/90 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-transparent dark:border-slate-800 rounded-full focus:bg-white dark:focus:bg-slate-950 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 focus:outline-none transition-all font-normal"
+            className="w-full pl-10 pr-12 py-2 text-sm bg-slate-100/90 dark:bg-slate-900/90 hover:bg-slate-100 dark:hover:bg-slate-800/90 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-transparent dark:border-slate-800/90 rounded-full focus:bg-white dark:focus:bg-slate-950 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 focus:outline-none transition-all font-normal"
           />
-          {searchQuery && (
+          {searchQuery ? (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 rounded-full"
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 rounded-full"
             >
               <X className="w-4 h-4" />
             </button>
+          ) : (
+            <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-500 pointer-events-none">
+              /
+            </span>
           )}
         </div>
 
         {/* Header Actions: Theme Switcher, Refresh, Upload, Lock */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Night Mode Toggle Button */}
           <button
             onClick={toggleTheme}
@@ -1042,7 +1060,7 @@ export default function App() {
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={!!uploadStatus}
-            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:scale-95 rounded-full shadow-md shadow-blue-500/25 transition-all"
+            className="flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 active:scale-95 rounded-full shadow-md shadow-blue-500/25 transition-all"
           >
             <Upload className="w-4 h-4" />
             <span className="hidden sm:inline">Upload</span>
@@ -1058,7 +1076,8 @@ export default function App() {
             className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/80 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 rounded-full transition-all active:scale-95 shadow-xs"
           >
             <Key className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-            <span>Change Password</span>
+            <span className="hidden sm:inline">Change Password</span>
+            <span className="sm:hidden">Password</span>
           </button>
 
           {/* Lock Vault Button */}
@@ -1089,108 +1108,108 @@ export default function App() {
           {/* 1. Photos Card */}
           <div
             onClick={() => setActiveTab('images')}
-            className={`p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between group ${
+            className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between group hover:-translate-y-0.5 ${
               activeTab === 'images'
-                ? 'bg-blue-50/90 dark:bg-blue-950/40 border-blue-400 dark:border-blue-500 ring-2 ring-blue-500/20 shadow-xs'
-                : 'bg-white dark:bg-slate-900/90 border-slate-200/80 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-500/50 hover:shadow-xs'
+                ? 'bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/50 dark:to-slate-900 border-blue-500 ring-2 ring-blue-500/20 shadow-md shadow-blue-500/10'
+                : 'bg-white dark:bg-slate-900/80 border-slate-200/80 dark:border-slate-800/90 hover:border-blue-400 dark:hover:border-blue-500/60 shadow-xs hover:shadow-md'
             }`}
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+              <div className="w-11 h-11 rounded-2xl bg-blue-100 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:scale-105 transition-transform shadow-inner">
                 <ImageIcon className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-[10px] sm:text-[11px] font-semibold text-slate-400 dark:text-slate-400 uppercase tracking-wider">
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                   Photos
                 </p>
-                <p className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-tight">
+                <p className="text-xl font-black text-slate-900 dark:text-white leading-tight">
                   {stats.imageCount}
                 </p>
               </div>
             </div>
             {activeTab === 'images' && (
-              <span className="w-2 h-2 rounded-full bg-blue-600 ring-4 ring-blue-100 dark:ring-blue-950 shrink-0" />
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-600 ring-4 ring-blue-100 dark:ring-blue-950 shrink-0" />
             )}
           </div>
 
           {/* 2. Videos Card */}
           <div
             onClick={() => setActiveTab('videos')}
-            className={`p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between group ${
+            className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between group hover:-translate-y-0.5 ${
               activeTab === 'videos'
-                ? 'bg-purple-50/90 dark:bg-purple-950/40 border-purple-400 dark:border-purple-500 ring-2 ring-purple-500/20 shadow-xs'
-                : 'bg-white dark:bg-slate-900/90 border-slate-200/80 dark:border-slate-800 hover:border-purple-300 dark:hover:border-purple-500/50 hover:shadow-xs'
+                ? 'bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-950/50 dark:to-slate-900 border-purple-500 ring-2 ring-purple-500/20 shadow-md shadow-purple-500/10'
+                : 'bg-white dark:bg-slate-900/80 border-slate-200/80 dark:border-slate-800/90 hover:border-purple-400 dark:hover:border-purple-500/60 shadow-xs hover:shadow-md'
             }`}
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-950/80 text-purple-600 dark:text-purple-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+              <div className="w-11 h-11 rounded-2xl bg-purple-100 dark:bg-purple-950/80 text-purple-600 dark:text-purple-400 flex items-center justify-center group-hover:scale-105 transition-transform shadow-inner">
                 <Film className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-[10px] sm:text-[11px] font-semibold text-slate-400 dark:text-slate-400 uppercase tracking-wider">
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                   Videos
                 </p>
-                <p className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-tight">
+                <p className="text-xl font-black text-slate-900 dark:text-white leading-tight">
                   {stats.videoCount}
                 </p>
               </div>
             </div>
             {activeTab === 'videos' && (
-              <span className="w-2 h-2 rounded-full bg-purple-600 ring-4 ring-purple-100 dark:ring-purple-950 shrink-0" />
+              <span className="w-2.5 h-2.5 rounded-full bg-purple-600 ring-4 ring-purple-100 dark:ring-purple-950 shrink-0" />
             )}
           </div>
 
           {/* 3. Music & Audio Card */}
           <div
             onClick={() => setActiveTab('audio')}
-            className={`p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between group ${
+            className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between group hover:-translate-y-0.5 ${
               activeTab === 'audio'
-                ? 'bg-emerald-50/90 dark:bg-emerald-950/40 border-emerald-400 dark:border-emerald-500 ring-2 ring-emerald-500/20 shadow-xs'
-                : 'bg-white dark:bg-slate-900/90 border-slate-200/80 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-500/50 hover:shadow-xs'
+                ? 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/50 dark:to-slate-900 border-emerald-500 ring-2 ring-emerald-500/20 shadow-md shadow-emerald-500/10'
+                : 'bg-white dark:bg-slate-900/80 border-slate-200/80 dark:border-slate-800/90 hover:border-emerald-400 dark:hover:border-emerald-500/60 shadow-xs hover:shadow-md'
             }`}
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+              <div className="w-11 h-11 rounded-2xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform shadow-inner">
                 <Music className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-[10px] sm:text-[11px] font-semibold text-slate-400 dark:text-slate-400 uppercase tracking-wider">
-                  Music & Audio
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Audio & Music
                 </p>
-                <p className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-tight">
+                <p className="text-xl font-black text-slate-900 dark:text-white leading-tight">
                   {stats.audioCount}
                 </p>
               </div>
             </div>
             {activeTab === 'audio' && (
-              <span className="w-2 h-2 rounded-full bg-emerald-600 ring-4 ring-emerald-100 dark:ring-emerald-950 shrink-0" />
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 ring-4 ring-emerald-100 dark:ring-emerald-950 shrink-0" />
             )}
           </div>
 
           {/* 4. Documents Card */}
           <div
             onClick={() => setActiveTab('documents')}
-            className={`p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between group ${
+            className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between group hover:-translate-y-0.5 ${
               activeTab === 'documents'
-                ? 'bg-amber-50/90 dark:bg-amber-950/40 border-amber-400 dark:border-amber-500 ring-2 ring-amber-500/20 shadow-xs'
-                : 'bg-white dark:bg-slate-900/90 border-slate-200/80 dark:border-slate-800 hover:border-amber-300 dark:hover:border-amber-500/50 hover:shadow-xs'
+                ? 'bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/50 dark:to-slate-900 border-amber-500 ring-2 ring-amber-500/20 shadow-md shadow-amber-500/10'
+                : 'bg-white dark:bg-slate-900/80 border-slate-200/80 dark:border-slate-800/90 hover:border-amber-400 dark:hover:border-amber-500/60 shadow-xs hover:shadow-md'
             }`}
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+              <div className="w-11 h-11 rounded-2xl bg-amber-100 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover:scale-105 transition-transform shadow-inner">
                 <FileText className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-[10px] sm:text-[11px] font-semibold text-slate-400 dark:text-slate-400 uppercase tracking-wider">
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                   Documents
                 </p>
-                <p className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-tight">
+                <p className="text-xl font-black text-slate-900 dark:text-white leading-tight">
                   {stats.docCount}
                 </p>
               </div>
             </div>
             {activeTab === 'documents' && (
-              <span className="w-2 h-2 rounded-full bg-amber-600 ring-4 ring-amber-100 dark:ring-amber-950 shrink-0" />
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-600 ring-4 ring-amber-100 dark:ring-amber-950 shrink-0" />
             )}
           </div>
         </div>
@@ -1300,38 +1319,40 @@ export default function App() {
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className="group relative rounded-2xl p-4 sm:p-5 transition-all duration-200 cursor-pointer border-2 border-dashed border-slate-200/90 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500 bg-white dark:bg-slate-900/90 hover:bg-blue-50/20 dark:hover:bg-slate-800/40 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs hover:shadow-md"
+            className="group relative rounded-3xl p-5 sm:p-6 transition-all duration-200 cursor-pointer border-2 border-dashed border-slate-300/80 dark:border-slate-800/80 hover:border-blue-500 dark:hover:border-blue-400 bg-white/70 dark:bg-slate-900/60 hover:bg-blue-50/20 dark:hover:bg-slate-800/40 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xs hover:shadow-lg hover:-translate-y-0.5"
           >
-            <div className="flex items-center gap-3 sm:gap-4 text-center sm:text-left">
-              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 group-hover:bg-blue-600 group-hover:text-white flex items-center justify-center shrink-0 transition-colors duration-200">
-                <Upload className="w-5 h-5" />
+            <div className="flex items-center gap-3.5 sm:gap-4 text-center sm:text-left">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white group-hover:scale-105 flex items-center justify-center shrink-0 transition-transform duration-200 shadow-md shadow-blue-500/20">
+                <Upload className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                <p className="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                   Upload photos, videos, music, or documents
                 </p>
-                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
-                  Click to browse or drop files anywhere • Direct MTProto streaming up to 2GB per file
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                  Click to browse or drop files anywhere • Direct Telegram MTProto streaming up to 2GB per file
                 </p>
               </div>
             </div>
 
-            <button
-              type="button"
-              className="px-4 py-2 text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/80 hover:bg-blue-100 dark:hover:bg-blue-900/60 group-hover:bg-blue-600 group-hover:text-white rounded-xl transition-all shrink-0 flex items-center gap-1.5 shadow-2xs"
-            >
-              <Upload className="w-3.5 h-3.5" /> Select Files
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="px-5 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 active:scale-95 rounded-2xl transition-all shrink-0 flex items-center gap-1.5 shadow-md shadow-blue-600/25"
+              >
+                <Upload className="w-3.5 h-3.5" /> Select Files
+              </button>
+            </div>
           </div>
         )}
 
         {/* Sticky Controls Bar: Category Pills + Search + Sort + View Switcher */}
-        <div className="sticky top-[56px] sm:top-[65px] z-20 bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-xl py-2.5 px-0.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/70 dark:border-slate-800/70 transition-colors duration-200">
+        <div className="sticky top-[56px] sm:top-[65px] z-20 bg-slate-50/95 dark:bg-[#080c14]/95 backdrop-blur-xl py-2.5 px-0.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/70 dark:border-slate-800/70 transition-colors duration-200">
           {/* Category Tabs: Photos, Videos, Audio, PDFs & Docs */}
-          <div className="flex items-center gap-1.5 p-1 bg-slate-200/70 dark:bg-slate-900 border dark:border-slate-800/80 rounded-2xl overflow-x-auto no-scrollbar max-w-full">
+          <div className="flex items-center gap-1 p-1 bg-slate-200/70 dark:bg-slate-900 border dark:border-slate-800/80 rounded-2xl overflow-x-auto no-scrollbar max-w-full">
             <button
               onClick={() => setActiveTab('all')}
-              className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+              className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
                 activeTab === 'all'
                   ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -1341,7 +1362,7 @@ export default function App() {
             </button>
             <button
               onClick={() => setActiveTab('images')}
-              className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+              className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
                 activeTab === 'images'
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -1351,7 +1372,7 @@ export default function App() {
             </button>
             <button
               onClick={() => setActiveTab('videos')}
-              className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+              className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
                 activeTab === 'videos'
                   ? 'bg-purple-600 text-white shadow-md shadow-purple-600/25'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -1361,7 +1382,7 @@ export default function App() {
             </button>
             <button
               onClick={() => setActiveTab('audio')}
-              className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+              className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
                 activeTab === 'audio'
                   ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/25'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -1371,7 +1392,7 @@ export default function App() {
             </button>
             <button
               onClick={() => setActiveTab('documents')}
-              className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+              className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
                 activeTab === 'documents'
                   ? 'bg-amber-600 text-white shadow-md shadow-amber-600/25'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -1429,7 +1450,7 @@ export default function App() {
                     ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
-                title="Google Photos Square Grid (3 columns on mobile)"
+                title="Google Photos Square Grid"
               >
                 <LayoutGrid className="w-4 h-4" />
               </button>
@@ -1451,41 +1472,47 @@ export default function App() {
         {/* Gallery Section — Google Photos Timeline Grouping */}
         {loading && files.length === 0 ? (
           // Loading Skeleton
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-1.5 sm:gap-3">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 sm:gap-3">
             {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
               <div
                 key={n}
-                className="aspect-square bg-slate-200/70 dark:bg-slate-900 border dark:border-slate-800/60 rounded-xl sm:rounded-2xl animate-pulse"
+                className="aspect-square bg-slate-200/70 dark:bg-slate-900 border dark:border-slate-800/60 rounded-2xl animate-pulse"
               />
             ))}
           </div>
         ) : filteredFiles.length === 0 ? (
-          // Empty State
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-12 text-center flex flex-col items-center justify-center my-6">
-            <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-500 mb-4">
-              <HardDrive className="w-8 h-8" />
+          // Premium Empty State
+          <div className="bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-10 sm:p-16 text-center flex flex-col items-center justify-center my-6 shadow-xs">
+            <div className="relative mb-5">
+              <div className="absolute inset-0 bg-blue-500/20 rounded-full blur-2xl" />
+              <div className="relative w-20 h-20 rounded-3xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-xl shadow-blue-500/25">
+                <HardDrive className="w-10 h-10" />
+              </div>
             </div>
-            <h3 className="text-base font-semibold text-slate-800 dark:text-slate-100">
-              {searchQuery ? 'No matching files found' : 'No files in this category'}
+
+            <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+              {searchQuery ? 'No matching files found' : 'Your Telegram Vault is Ready'}
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mt-1 mb-5">
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md mt-2 mb-6 leading-relaxed">
               {searchQuery
-                ? `No items match the search query "${searchQuery}".`
-                : 'Upload your photos, videos, music files, or PDFs above to store them in your private Telegram channel.'}
+                ? `No items match "${searchQuery}". Try a different keyword or reset your filter.`
+                : 'Upload photos, videos, music, or PDFs to store them permanently in your private Telegram cloud channel with zero compression.'}
             </p>
+
             {searchQuery ? (
               <button
                 onClick={() => setSearchQuery('')}
-                className="px-4 py-2 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/80 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-xl transition-colors"
+                className="px-5 py-2.5 text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/80 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-2xl transition-colors shadow-2xs"
               >
-                Clear Search
+                Clear Search Filter
               </button>
             ) : (
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="px-4 py-2 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/80 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-xl transition-colors"
+                className="px-6 py-3 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 rounded-2xl transition-all shadow-lg shadow-blue-500/25 active:scale-95 flex items-center gap-2"
               >
-                Select Files to Upload
+                <Upload className="w-4 h-4" />
+                <span>Upload Your First File</span>
               </button>
             )}
           </div>
