@@ -30,6 +30,7 @@ import {
   EyeOff,
   ShieldCheck,
 } from 'lucide-react';
+import MediaLightbox from './components/MediaLightbox';
 
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
@@ -994,11 +995,11 @@ export default function App() {
 
         {/* Gallery Controls & Category Pills */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
-          {/* Category Tabs: Photos, Videos, Audio, PDFs & Docs */}
-          <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-200/80 rounded-2xl w-fit">
+          {/* Category Tabs: Photos, Videos, Audio, PDFs & Docs (Horizontal Touch Scroll for Mobile) */}
+          <div className="flex items-center gap-1.5 p-1 bg-slate-200/80 rounded-2xl overflow-x-auto no-scrollbar max-w-full">
             <button
               onClick={() => setActiveTab('all')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+              className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                 activeTab === 'all'
                   ? 'bg-white text-slate-900 shadow-sm'
                   : 'text-slate-600 hover:text-slate-900'
@@ -1008,7 +1009,7 @@ export default function App() {
             </button>
             <button
               onClick={() => setActiveTab('images')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+              className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 activeTab === 'images'
                   ? 'bg-white text-slate-900 shadow-sm'
                   : 'text-slate-600 hover:text-slate-900'
@@ -1018,7 +1019,7 @@ export default function App() {
             </button>
             <button
               onClick={() => setActiveTab('videos')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+              className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 activeTab === 'videos'
                   ? 'bg-white text-slate-900 shadow-sm'
                   : 'text-slate-600 hover:text-slate-900'
@@ -1028,7 +1029,7 @@ export default function App() {
             </button>
             <button
               onClick={() => setActiveTab('audio')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+              className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 activeTab === 'audio'
                   ? 'bg-white text-slate-900 shadow-sm'
                   : 'text-slate-600 hover:text-slate-900'
@@ -1038,7 +1039,7 @@ export default function App() {
             </button>
             <button
               onClick={() => setActiveTab('documents')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+              className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 activeTab === 'documents'
                   ? 'bg-white text-slate-900 shadow-sm'
                   : 'text-slate-600 hover:text-slate-900'
@@ -1248,185 +1249,33 @@ export default function App() {
         )}
       </main>
 
-      {/* Lightbox / Media Viewer Modal for ALL File Types */}
+      {/* Mobile Floating Action Button (FAB) for Quick 1-Tap Uploads */}
+      <button
+        onClick={() => fileInputRef.current?.click()}
+        disabled={!!uploadStatus}
+        className="sm:hidden fixed bottom-6 right-6 z-40 p-4 rounded-full bg-blue-600 hover:bg-blue-500 text-white shadow-2xl shadow-blue-600/40 active:scale-90 transition-all flex items-center justify-center border border-white/20"
+        title="Upload Media"
+      >
+        <Upload className="w-6 h-6" />
+      </button>
+
+      {/* High-Performance Lightbox & Media Viewer with Touch Swipe, Slide Transitions & Filmstrip */}
       {selectedFile && (
-        <div
-          onClick={() => setSelectedFile(null)}
-          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex items-center justify-center p-2 sm:p-6 animate-in fade-in duration-200"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="relative max-w-5xl w-full max-h-[92vh] bg-slate-900 rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-slate-800"
-          >
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-5 py-3.5 bg-slate-950/80 border-b border-slate-800 text-white">
-              <div className="flex items-center gap-2 truncate pr-4">
-                {getFileType(selectedFile) === 'video' && <Film className="w-4 h-4 text-purple-400 shrink-0" />}
-                {getFileType(selectedFile) === 'image' && <ImageIcon className="w-4 h-4 text-blue-400 shrink-0" />}
-                {getFileType(selectedFile) === 'audio' && <Music className="w-4 h-4 text-emerald-400 shrink-0" />}
-                {getFileType(selectedFile) === 'pdf' && <FileText className="w-4 h-4 text-rose-400 shrink-0" />}
-                {getFileType(selectedFile) === 'document' && <File className="w-4 h-4 text-amber-400 shrink-0" />}
-                <span className="text-sm font-semibold truncate">
-                  {selectedFile.fileName}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() =>
-                    handleTrackedDownload(
-                      selectedFile.telegramMessageId,
-                      selectedFile.fileName
-                    )
-                  }
-                  disabled={downloading}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>
-                    {downloading
-                      ? `Downloading (${downloadProgress}% • ${downloadSpeed})`
-                      : 'Download'}
-                  </span>
-                </button>
-                <button
-                  onClick={() =>
-                    handleDelete(selectedFile.telegramMessageId, selectedFile.fileName)
-                  }
-                  className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-xl transition-colors"
-                  title="Delete file"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setSelectedFile(null)}
-                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Modal Media Body by File Type */}
-            <div className="flex-1 bg-black/70 flex items-center justify-center p-2 sm:p-6 overflow-hidden min-h-[320px]">
-              {/* Video Player */}
-              {getFileType(selectedFile) === 'video' && (
-                <video
-                  src={getStreamUrl(selectedFile.telegramMessageId)}
-                  controls
-                  autoPlay
-                  className="max-h-[66vh] w-auto max-w-full rounded-2xl shadow-2xl"
-                />
-              )}
-
-              {/* Photo Viewer */}
-              {getFileType(selectedFile) === 'image' && (
-                <img
-                  src={getStreamUrl(selectedFile.telegramMessageId)}
-                  alt={selectedFile.fileName}
-                  className="max-h-[66vh] w-auto max-w-full object-contain rounded-2xl shadow-2xl"
-                />
-              )}
-
-              {/* Native Audio Music Player */}
-              {getFileType(selectedFile) === 'audio' && (
-                <div className="max-w-md w-full bg-slate-800/90 border border-slate-700 p-8 rounded-3xl flex flex-col items-center text-center shadow-2xl">
-                  <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center mb-5 shadow-lg shadow-emerald-500/30">
-                    <Music className="w-10 h-10 animate-pulse" />
-                  </div>
-                  <h4 className="font-bold text-white text-base mb-1 truncate max-w-xs">
-                    {selectedFile.fileName}
-                  </h4>
-                  <p className="text-xs text-emerald-400 mb-6 font-mono">
-                    {formatBytes(selectedFile.size)} • {selectedFile.mimeType}
-                  </p>
-                  <audio
-                    src={getStreamUrl(selectedFile.telegramMessageId)}
-                    controls
-                    autoPlay
-                    className="w-full rounded-xl"
-                  />
-                </div>
-              )}
-
-              {/* PDF Viewer */}
-              {getFileType(selectedFile) === 'pdf' && (
-                <div className="w-full h-[66vh] flex flex-col items-center justify-center bg-slate-900 rounded-2xl overflow-hidden border border-slate-800">
-                  <iframe
-                    src={getStreamUrl(selectedFile.telegramMessageId)}
-                    title={selectedFile.fileName}
-                    className="w-full h-full rounded-2xl"
-                  />
-                </div>
-              )}
-
-              {/* Document / Generic Viewer */}
-              {getFileType(selectedFile) === 'document' && (
-                <div className="max-w-md w-full bg-slate-800/90 border border-slate-700 p-8 rounded-3xl flex flex-col items-center text-center shadow-2xl">
-                  <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-amber-600 to-orange-500 text-white flex items-center justify-center mb-5 shadow-lg shadow-amber-500/30">
-                    <File className="w-10 h-10" />
-                  </div>
-                  <h4 className="font-bold text-white text-base mb-1 truncate max-w-xs">
-                    {selectedFile.fileName}
-                  </h4>
-                  <p className="text-xs text-amber-400 mb-6 font-mono">
-                    {formatBytes(selectedFile.size)} • {selectedFile.mimeType}
-                  </p>
-                  <button
-                    onClick={() =>
-                      handleTrackedDownload(
-                        selectedFile.telegramMessageId,
-                        selectedFile.fileName
-                      )
-                    }
-                    className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-2xl flex items-center gap-2 shadow-lg transition-transform active:scale-95"
-                  >
-                    <Download className="w-4 h-4" /> Download Document
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer: Metadata Details */}
-            <div className="px-5 py-3.5 bg-slate-950/90 border-t border-slate-800 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-400">
-              <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-                <div>
-                  <span className="text-slate-500">File Size:</span>{' '}
-                  <span className="text-slate-200 font-semibold">
-                    {formatBytes(selectedFile.size)}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500">Format:</span>{' '}
-                  <span className="text-slate-200 font-mono text-[11px]">
-                    {selectedFile.mimeType}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500">Date:</span>{' '}
-                  <span className="text-slate-200 font-semibold">
-                    {formatDate(selectedFile.createdAt || selectedFile.uploadDate)}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500">Telegram Msg ID:</span>{' '}
-                  <span className="text-blue-400 font-mono text-[11px]">
-                    #{selectedFile.telegramMessageId}
-                  </span>
-                </div>
-              </div>
-
-              <a
-                href={getStreamUrl(selectedFile.telegramMessageId)}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-1 text-blue-400 hover:text-blue-300 transition-colors"
-              >
-                <span>Direct MTProto URL</span>
-                <ExternalLink className="w-3 h-3" />
-              </a>
-            </div>
-          </div>
-        </div>
+        <MediaLightbox
+          files={filteredFiles}
+          activeFile={selectedFile}
+          onClose={() => setSelectedFile(null)}
+          onSelectFile={setSelectedFile}
+          getStreamUrl={getStreamUrl}
+          getFileType={getFileType}
+          formatBytes={formatBytes}
+          formatDate={formatDate}
+          handleDownload={handleTrackedDownload}
+          handleDelete={handleDelete}
+          downloading={downloading}
+          downloadProgress={downloadProgress}
+          downloadSpeed={downloadSpeed}
+        />
       )}
     </div>
   );
