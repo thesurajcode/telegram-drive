@@ -390,17 +390,16 @@ async function deleteFile(req, res) {
   }
 
   try {
-    const client = await getTelegramClient();
-    const channel = await getChannelEntity(client);
-
-    // Delete message from Telegram channel
+    // 1. Attempt to delete message from Telegram channel (non-blocking)
     try {
+      const client = await getTelegramClient();
+      const channel = await getChannelEntity(client);
       await client.deleteMessages(channel, [messageId], { revoke: true });
     } catch (telegramErr) {
       console.warn(`⚠️ Telegram deleteMessages warning for messageId ${messageId}:`, telegramErr.message || telegramErr);
     }
 
-    // Delete record from PostgreSQL via Prisma
+    // 2. Delete record from PostgreSQL via Prisma
     await prisma.file.deleteMany({
       where: {
         telegramMessageId: messageId,
@@ -439,17 +438,16 @@ async function batchDeleteFiles(req, res) {
   }
 
   try {
-    const client = await getTelegramClient();
-    const channel = await getChannelEntity(client);
-
-    // Delete messages in batch from Telegram channel
+    // 1. Attempt to delete messages in batch from Telegram channel (non-blocking)
     try {
+      const client = await getTelegramClient();
+      const channel = await getChannelEntity(client);
       await client.deleteMessages(channel, validIds, { revoke: true });
     } catch (telegramErr) {
       console.warn('⚠️ Telegram deleteMessages warning:', telegramErr.message);
     }
 
-    // Delete records from PostgreSQL via Prisma
+    // 2. Delete records from PostgreSQL via Prisma
     const deleted = await prisma.file.deleteMany({
       where: {
         telegramMessageId: {
