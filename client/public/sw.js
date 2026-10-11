@@ -1,5 +1,5 @@
 // TelePhotos PWA Service Worker - Phase 1
-const CACHE_NAME = 'telephotos-pwa-v2';
+const CACHE_NAME = 'telephotos-pwa-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
