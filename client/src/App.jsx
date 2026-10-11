@@ -41,6 +41,9 @@ import {
   Layers,
   Sparkles,
   Server,
+  CheckSquare,
+  Square,
+  Copy,
 } from 'lucide-react';
 import MediaLightbox from './components/MediaLightbox';
 import PasswordManagerModal from './components/PasswordManagerModal';
@@ -224,6 +227,9 @@ export default function App() {
   const [sortBy, setSortBy] = useState('newest'); // 'newest' | 'oldest' | 'largest' | 'smallest' | 'name'
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [showVaultMenu, setShowVaultMenu] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [isBatchDeleting, setIsBatchDeleting] = useState(false);
   const vaultMenuRef = useRef(null);
   const mobileVaultSheetRef = useRef(null);
 
@@ -760,10 +766,134 @@ export default function App() {
       if (selectedFile?.telegramMessageId === messageId) {
         setSelectedFile(null);
       }
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(messageId);
+        return next;
+      });
       showToast(`Deleted "${fileName}"`, 'success');
     } catch (err) {
       console.error('Failed to delete file:', err);
       showToast(err.response?.data?.error || 'Failed to delete file', 'error');
+    }
+  };
+
+  /**
+   * Toggle item selection
+   */
+  const toggleSelect = (messageId, e) => {
+    if (e) e.stopPropagation();
+    triggerHaptic(15);
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(messageId)) {
+        next.delete(messageId);
+        if (next.size === 0) setIsSelectMode(false);
+      } else {
+        next.add(messageId);
+        setIsSelectMode(true);
+      }
+      return next;
+    });
+  };
+
+  /**
+   * Select all filtered files
+   */
+  const selectAllFiltered = () => {
+    triggerHaptic(15);
+    const ids = filteredFiles.map((f) => f.telegramMessageId);
+    setSelectedIds(new Set(ids));
+    setIsSelectMode(true);
+  };
+
+  /**
+   * Clear all selected items & exit select mode
+   */
+  const deselectAll = () => {
+    triggerHaptic(10);
+    setSelectedIds(new Set());
+    setIsSelectMode(false);
+  };
+
+  /**
+   * Bulk delete selected files from Telegram channel & database
+   */
+  const handleBatchDelete = async () => {
+    if (selectedIds.size === 0) return;
+    const count = selectedIds.size;
+    const confirmed = window.confirm(
+      `Are you sure you want to permanently delete ${count} selected item${
+        count > 1 ? 's' : ''
+      }? This will permanently remove them from Telegram MTProto storage.`
+    );
+    if (!confirmed) return;
+
+    setIsBatchDeleting(true);
+    triggerHaptic(20);
+
+    const messageIds = Array.from(selectedIds);
+    let successIds = [];
+
+    // 1. Try high-performance backend batch delete endpoint first
+    try {
+      await axios.post(`${apiBaseUrl}/files/batch-delete`, { messageIds });
+      successIds = [...messageIds];
+    } catch (batchErr) {
+      console.warn('Batch delete endpoint not available or failed, using fallback:', batchErr.message);
+
+      // 2. Resilient fallback: delete items in parallel using single DELETE endpoint
+      const deletePromises = messageIds.map(async (id) => {
+        try {
+          await axios.delete(`${apiBaseUrl}/files/${id}`);
+          return { id, success: true };
+        } catch (err) {
+          console.error(`Failed to delete message ${id}:`, err.message);
+          return { id, success: false };
+        }
+      });
+
+      const results = await Promise.all(deletePromises);
+      successIds = results.filter((r) => r.success).map((r) => r.id);
+    }
+
+    if (successIds.length > 0) {
+      const successSet = new Set(successIds);
+      setFiles((prev) => prev.filter((item) => !successSet.has(item.telegramMessageId)));
+      if (selectedFile && successSet.has(selectedFile.telegramMessageId)) {
+        setSelectedFile(null);
+      }
+
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        successIds.forEach((id) => next.delete(id));
+        return next;
+      });
+
+      if (successIds.length === messageIds.length) {
+        setIsSelectMode(false);
+        showToast(`Permanently deleted ${successIds.length} file${successIds.length > 1 ? 's' : ''}!`, 'success');
+      } else {
+        showToast(`Deleted ${successIds.length} of ${messageIds.length} files.`, 'warning');
+      }
+    } else {
+      showToast('Failed to delete selected files. Please check server connection.', 'error');
+    }
+
+    setIsBatchDeleting(false);
+  };
+
+  /**
+   * Bulk download selected files sequentially
+   */
+  const handleBatchDownload = async () => {
+    const selectedFilesList = files.filter((f) => selectedIds.has(f.telegramMessageId));
+    if (selectedFilesList.length === 0) return;
+
+    showToast(`Downloading ${selectedFilesList.length} file(s)...`, 'info');
+    for (const file of selectedFilesList) {
+      await handleTrackedDownload(file.telegramMessageId, file.fileName);
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
   };
 
@@ -1334,9 +1464,9 @@ export default function App() {
         )}
 
         {/* Sticky Controls Bar: User-Friendly Category Tabs + Search + Sort + Layout Density */}
-        <div className="sticky top-[52px] sm:top-[65px] z-20 bg-slate-50/95 dark:bg-[#080c14]/95 backdrop-blur-xl py-2 px-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-200/70 dark:border-slate-800/70 transition-colors duration-200 max-w-full overflow-hidden">
-          {/* Segmented Category Control Tabs (Unified & Clean) */}
-          <div className="flex items-center gap-1.5 p-1 bg-slate-200/70 dark:bg-slate-900 border dark:border-slate-800/80 rounded-2xl overflow-x-auto no-scrollbar max-w-full">
+        <div className="sticky top-[54px] sm:top-[65px] z-20 bg-slate-50/95 dark:bg-[#080c14]/95 backdrop-blur-xl py-3 px-3 sm:px-4 flex flex-col gap-2.5 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-xs transition-colors duration-200 w-full">
+          {/* Top Row: Segmented Category Control Tabs (Unified & Clean with smooth scrolling) */}
+          <div className="flex items-center gap-1.5 p-1 bg-slate-200/70 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl overflow-x-auto no-scrollbar w-full">
             <button
               onClick={() => setActiveTab('all')}
               className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
@@ -1389,72 +1519,180 @@ export default function App() {
             </button>
           </div>
 
-          {/* Controls: Search (Mobile), Sort Dropdown & Layout Switcher */}
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            {/* Search bar on mobile */}
+          {/* Bottom Row / Controls: Search (Mobile) + Sort Dropdown + Multi-Select + Layout Density Switcher */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 w-full">
+            {/* Search bar on mobile with clear button */}
             <div className="relative flex-1 md:hidden">
               <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
               <input
                 type="text"
-                placeholder="Search..."
+                placeholder="Search media files..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-8 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl focus:outline-none focus:border-blue-500 shadow-2xs"
+                className="w-full pl-9 pr-8 py-2 text-xs bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl focus:outline-none focus:border-blue-500 shadow-2xs transition-all"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
 
-            {/* Sort Selector Dropdown */}
-            <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl px-2.5 py-1.5 shadow-2xs shrink-0">
-              <ArrowUpDown className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="bg-transparent text-xs font-bold text-slate-700 dark:text-slate-200 pl-1.5 pr-1 focus:outline-none cursor-pointer"
-                title="Sort items"
-              >
-                <option value="newest" className="dark:bg-slate-900">Newest</option>
-                <option value="oldest" className="dark:bg-slate-900">Oldest</option>
-                <option value="largest" className="dark:bg-slate-900">Largest</option>
-                <option value="smallest" className="dark:bg-slate-900">Smallest</option>
-                <option value="name" className="dark:bg-slate-900">A - Z</option>
-              </select>
-            </div>
+            {/* Action Buttons: Sort, Multi-Select, and Grid Density Switcher */}
+            <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+              {/* Sort Selector Dropdown */}
+              <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-xl px-2.5 py-1.5 shadow-2xs shrink-0">
+                <ArrowUpDown className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-slate-700 dark:text-slate-200 pl-1.5 pr-1 focus:outline-none cursor-pointer"
+                  title="Sort items"
+                >
+                  <option value="newest" className="dark:bg-slate-900">Newest</option>
+                  <option value="oldest" className="dark:bg-slate-900">Oldest</option>
+                  <option value="largest" className="dark:bg-slate-900">Largest</option>
+                  <option value="smallest" className="dark:bg-slate-900">Smallest</option>
+                  <option value="name" className="dark:bg-slate-900">A - Z</option>
+                </select>
+              </div>
 
-            {/* Layout Density Switcher: Square Grid vs Masonry Flow */}
-            <div className="flex items-center bg-slate-200/80 dark:bg-slate-900 border dark:border-slate-800/80 p-0.5 rounded-xl shrink-0 shadow-2xs">
-              <button
-                onClick={() => setGridMode('grid')}
-                className={`p-1.5 rounded-lg transition-all ${
-                  gridMode === 'grid'
-                    ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-                title="Square Grid (3 columns on mobile, 4-6 on desktop)"
-              >
-                <LayoutGrid className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setGridMode('columns')}
-                className={`p-1.5 rounded-lg transition-all ${
-                  gridMode === 'columns'
-                    ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-                title="Masonry Flow view"
-              >
-                <Columns className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                {/* Multi-Select Toggle Button */}
+                <button
+                  onClick={() => {
+                    triggerHaptic(10);
+                    if (isSelectMode || selectedIds.size > 0) {
+                      deselectAll();
+                    } else {
+                      setIsSelectMode(true);
+                    }
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs shrink-0 ${
+                    isSelectMode || selectedIds.size > 0
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                      : 'bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:border-blue-500/50'
+                  }`}
+                  title={isSelectMode ? 'Cancel Selection' : 'Select Multiple Files'}
+                >
+                  <CheckSquare className="w-3.5 h-3.5" />
+                  <span>{selectedIds.size > 0 ? `${selectedIds.size}` : 'Select'}</span>
+                </button>
+
+                {/* Layout Density Switcher: Square Grid vs Masonry Flow */}
+                <div className="flex items-center bg-slate-200/80 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 p-0.5 rounded-xl shrink-0 shadow-2xs">
+                  <button
+                    onClick={() => {
+                      triggerHaptic(10);
+                      setGridMode('grid');
+                    }}
+                    className={`p-1.5 rounded-lg transition-all ${
+                      gridMode === 'grid'
+                        ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                    title="Square Grid (3 columns on mobile, 4-6 on desktop)"
+                  >
+                    <LayoutGrid className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      triggerHaptic(10);
+                      setGridMode('columns');
+                    }}
+                    className={`p-1.5 rounded-lg transition-all ${
+                      gridMode === 'columns'
+                        ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                    title="Masonry Flow view"
+                  >
+                    <Columns className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
+
+        {/* Floating Batch Actions Bar (High-Visibility Multi-Select Toolbar) */}
+        {selectedIds.size > 0 && (
+          <div className="sticky top-[106px] sm:top-[122px] z-30 w-full bg-slate-900/95 dark:bg-slate-900/95 backdrop-blur-2xl text-white border border-blue-500/40 rounded-2xl p-2.5 sm:p-3 shadow-2xl flex items-center justify-between gap-2 sm:gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className="w-7 h-7 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-md">
+                {selectedIds.size}
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm font-bold text-white truncate">
+                  {selectedIds.size} file{selectedIds.size > 1 ? 's' : ''} selected
+                </p>
+                <p className="text-[10px] sm:text-[11px] text-slate-400 truncate">
+                  {formatBytes(
+                    files
+                      .filter((f) => selectedIds.has(f.telegramMessageId))
+                      .reduce((acc, curr) => acc + (Number(curr.size) || 0), 0)
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+              {/* Select All / Deselect Toggle */}
+              <button
+                onClick={() => {
+                  if (filteredFiles.length > 0 && filteredFiles.every((f) => selectedIds.has(f.telegramMessageId))) {
+                    deselectAll();
+                  } else {
+                    selectAllFiltered();
+                  }
+                }}
+                className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-semibold text-slate-200 active:scale-95 transition-all"
+                title="Select all or clear"
+              >
+                {filteredFiles.length > 0 && filteredFiles.every((f) => selectedIds.has(f.telegramMessageId))
+                  ? 'Deselect All'
+                  : 'Select All'}
+              </button>
+
+              {/* Download Selected */}
+              <button
+                onClick={handleBatchDownload}
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-xs font-semibold text-white transition-all"
+                title="Download selected files"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Download</span>
+              </button>
+
+              {/* Delete Selected */}
+              <button
+                onClick={handleBatchDelete}
+                disabled={isBatchDeleting}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 active:scale-95 text-xs font-bold text-white shadow-md shadow-rose-600/25 transition-all disabled:opacity-50"
+                title="Permanently delete selected files"
+              >
+                {isBatchDeleting ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="w-3.5 h-3.5" />
+                )}
+                <span className="hidden sm:inline">Delete</span>
+              </button>
+
+              {/* Close / Cancel */}
+              <button
+                onClick={deselectAll}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors ml-1"
+                title="Cancel selection"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Gallery Section — Google Photos Timeline Grouping */}
         {loading && files.length === 0 ? (
@@ -1534,17 +1772,49 @@ export default function App() {
                     const streamUrl = getStreamUrl(file.telegramMessageId);
                     const fileType = getFileType(file);
                     const isSquare = gridMode === 'grid';
+                    const isSelected = selectedIds.has(file.telegramMessageId);
 
                     return (
                       <div
                         key={file.id || file.telegramMessageId}
-                        onClick={() => setSelectedFile(file)}
-                        className={`group relative overflow-hidden bg-slate-900 dark:bg-slate-900/90 shadow-sm hover:shadow-xl transition-all duration-200 cursor-pointer transform active:scale-95 ${
+                        onClick={() => {
+                          if (isSelectMode || selectedIds.size > 0) {
+                            toggleSelect(file.telegramMessageId);
+                          } else {
+                            setSelectedFile(file);
+                          }
+                        }}
+                        className={`group relative overflow-hidden bg-slate-900 dark:bg-slate-900/90 border border-slate-200/60 dark:border-slate-800/80 transition-all duration-200 cursor-pointer transform active:scale-95 select-none ${
                           isSquare
-                            ? 'aspect-square rounded-xl sm:rounded-2xl'
-                            : 'break-inside-avoid rounded-2xl hover:-translate-y-1'
+                            ? 'aspect-square rounded-2xl sm:rounded-3xl'
+                            : 'break-inside-avoid rounded-2xl sm:rounded-3xl hover:-translate-y-1'
+                        } ${
+                          isSelected
+                            ? 'ring-3 sm:ring-4 ring-blue-500 border-blue-400 dark:border-blue-400 shadow-2xl shadow-blue-500/30 scale-[0.97]'
+                            : 'shadow-sm hover:shadow-xl hover:border-blue-500/40'
                         }`}
                       >
+                        {/* Selection Checkbox Button */}
+                        <button
+                          type="button"
+                          onClick={(e) => toggleSelect(file.telegramMessageId, e)}
+                          className={`absolute top-2.5 left-2.5 z-25 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg active:scale-85 cursor-pointer ${
+                            isSelected
+                              ? 'bg-blue-600 text-white ring-2 ring-white/90 scale-100 opacity-100 shadow-blue-500/50'
+                              : isSelectMode || selectedIds.size > 0
+                              ? 'bg-black/50 backdrop-blur-md border-2 border-white/80 text-transparent hover:border-white hover:scale-105 opacity-100'
+                              : 'opacity-0 group-hover:opacity-100 bg-black/40 backdrop-blur-md border-2 border-white/70 text-transparent hover:border-white hover:scale-105'
+                          }`}
+                          title={isSelected ? 'Deselect item' : 'Select item'}
+                        >
+                          <Check className={`w-4 h-4 stroke-[3] ${isSelected ? 'opacity-100 text-white' : 'opacity-0'}`} />
+                        </button>
+
+                        {/* Blue Tint Overlay When Selected */}
+                        {isSelected && (
+                          <div className="absolute inset-0 z-10 bg-blue-600/20 backdrop-blur-[1px] pointer-events-none" />
+                        )}
+
                         {/* 1. Video Rendering */}
                         {fileType === 'video' && (
                           <div
@@ -1560,11 +1830,11 @@ export default function App() {
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 pointer-events-none"
                             />
                             <div className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover:bg-black/45 transition-colors">
-                              <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-full bg-white/90 backdrop-blur-sm text-slate-900 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                                <Play className="w-3.5 h-3.5 sm:w-5 sm:h-5 fill-slate-900 ml-0.5" />
+                              <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/90 backdrop-blur-sm text-slate-900 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                                <Play className="w-4 h-4 sm:w-5 sm:h-5 fill-slate-900 ml-0.5" />
                               </div>
                             </div>
-                            <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                            <div className="absolute top-2.5 right-2.5 bg-black/60 backdrop-blur-md border border-white/10 text-white text-[10px] font-bold px-2 py-0.5 rounded-lg flex items-center gap-1 shadow-sm">
                               <Film className="w-3 h-3 text-purple-400" />
                               <span className="hidden sm:inline">Video</span>
                             </div>
@@ -1586,7 +1856,7 @@ export default function App() {
                               onError={(e) => {
                                 e.target.style.display = 'none';
                                 if (e.target.nextSibling) {
-                                  e.target.nextSibling.style.display = 'flex';
+                                   e.target.nextSibling.style.display = 'flex';
                                 }
                               }}
                               className={`w-full ${
@@ -1603,7 +1873,7 @@ export default function App() {
                         {/* 3. Audio / Music Rendering */}
                         {fileType === 'audio' && (
                           <div className="relative aspect-square w-full h-full bg-gradient-to-tr from-emerald-950 via-slate-900 to-teal-900 p-2 sm:p-4 flex flex-col items-center justify-center text-center">
-                            <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-1.5 sm:mb-3 shadow-inner group-hover:scale-110 transition-transform">
+                            <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mb-1.5 sm:mb-3 shadow-inner group-hover:scale-110 transition-transform">
                               <Headphones className="w-5 h-5 sm:w-7 sm:h-7" />
                             </div>
                             <p className="text-[11px] sm:text-xs font-bold text-white line-clamp-2 px-1">
@@ -1619,7 +1889,7 @@ export default function App() {
                               isSquare ? 'w-full h-full' : 'aspect-[4/5]'
                             }`}
                           >
-                            <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mb-1.5 sm:mb-3 group-hover:scale-110 transition-transform">
+                            <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl bg-rose-500/20 border border-rose-500/30 text-rose-400 flex items-center justify-center mb-1.5 sm:mb-3 group-hover:scale-110 transition-transform">
                               <FileText className="w-5 h-5 sm:w-7 sm:h-7" />
                             </div>
                             <p className="text-[11px] sm:text-xs font-bold text-white line-clamp-2 px-1">
@@ -1635,7 +1905,7 @@ export default function App() {
                               isSquare ? 'w-full h-full' : 'aspect-[4/5]'
                             }`}
                           >
-                            <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center mb-1.5 sm:mb-3 group-hover:scale-110 transition-transform">
+                            <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl bg-amber-500/20 border border-amber-500/30 text-amber-400 flex items-center justify-center mb-1.5 sm:mb-3 group-hover:scale-110 transition-transform">
                               <File className="w-5 h-5 sm:w-7 sm:h-7" />
                             </div>
                             <p className="text-[11px] sm:text-xs font-bold text-white line-clamp-2 px-1">
@@ -1646,7 +1916,7 @@ export default function App() {
 
                         {/* Hover Overlay with Metadata & Quick Actions (Desktop only) */}
                         <div className="hidden sm:flex absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-3 flex-col justify-between">
-                          {/* Top Actions */}
+                          {/* Top Actions with Polished Icon Borders */}
                           <div className="flex items-center justify-end gap-1.5 self-end">
                             <button
                               onClick={(e) => {
@@ -1654,14 +1924,14 @@ export default function App() {
                                 handleTrackedDownload(file.telegramMessageId, file.fileName);
                               }}
                               title="Download file"
-                              className="p-1.5 rounded-full bg-white/20 hover:bg-white/40 text-white backdrop-blur-md transition-colors"
+                              className="p-2 rounded-xl bg-black/50 hover:bg-black/80 border border-white/20 hover:border-white/40 text-white backdrop-blur-md transition-all active:scale-90 shadow-md"
                             >
                               <Download className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={(e) => handleDelete(file.telegramMessageId, file.fileName, e)}
                               title="Delete permanently"
-                              className="p-1.5 rounded-full bg-rose-600/80 hover:bg-rose-600 text-white backdrop-blur-md transition-colors"
+                              className="p-2 rounded-xl bg-rose-600/80 hover:bg-rose-600 border border-rose-400/40 text-white backdrop-blur-md transition-all active:scale-90 shadow-md"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -1704,7 +1974,7 @@ export default function App() {
         {/* Tab 1: All Files */}
         <button
           onClick={() => setActiveTab('all')}
-          className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl transition-all ${
+          className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl transition-all active:scale-95 ${
             activeTab === 'all'
               ? 'text-blue-600 dark:text-blue-400 font-bold'
               : 'text-slate-500 hover:text-slate-900 dark:hover:text-white font-medium'
@@ -1717,7 +1987,7 @@ export default function App() {
         {/* Tab 2: Photos */}
         <button
           onClick={() => setActiveTab('images')}
-          className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl transition-all ${
+          className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl transition-all active:scale-95 ${
             activeTab === 'images'
               ? 'text-blue-600 dark:text-blue-400 font-bold'
               : 'text-slate-500 hover:text-slate-900 dark:hover:text-white font-medium'
@@ -1731,7 +2001,7 @@ export default function App() {
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={!!uploadStatus}
-          className="relative -top-4 w-12 h-12 rounded-full bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-400 text-white flex items-center justify-center shadow-lg shadow-blue-500/40 active:scale-95 transition-transform border-2 border-white dark:border-[#080c14]"
+          className="relative -top-4 w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-400 text-white flex items-center justify-center shadow-lg shadow-blue-500/40 active:scale-90 transition-transform ring-4 ring-white dark:ring-[#080c14] border border-white/25"
           title="Upload Files"
         >
           <Upload className="w-5 h-5" />

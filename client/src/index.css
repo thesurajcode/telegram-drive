@@ -43,14 +43,33 @@
   background: rgba(15, 23, 42, 0.75);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }
 
 .glass-card-light {
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(226, 232, 240, 0.8);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+}
+
+/* Tactile button bounce on tap */
+.btn-smooth {
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.btn-smooth:active {
+  transform: scale(0.93);
+}
+
+/* Card hover glow */
+.card-hover-glow {
+  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.card-hover-glow:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(59, 130, 246, 0.3);
 }
 
 /* Shimmer effect for buttons and highlights */
@@ -85,8 +104,8 @@
 
 /* Custom scrollbars */
 ::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -143,7 +162,6 @@
 
 /* PWA and Mobile Touch Polish */
 @media (display-mode: standalone) {
-  /* When installed as PWA app */
   body {
     user-select: none;
     -webkit-user-select: none;

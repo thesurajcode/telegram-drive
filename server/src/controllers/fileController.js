@@ -394,7 +394,11 @@ async function deleteFile(req, res) {
     const channel = await getChannelEntity(client);
 
     // Delete message from Telegram channel
-    await client.deleteMessages(channel, [messageId], { revoke: true });
+    try {
+      await client.deleteMessages(channel, [messageId], { revoke: true });
+    } catch (telegramErr) {
+      console.warn(`⚠️ Telegram deleteMessages warning for messageId ${messageId}:`, telegramErr.message || telegramErr);
+    }
 
     // Delete record from PostgreSQL via Prisma
     await prisma.file.deleteMany({
@@ -416,10 +420,64 @@ async function deleteFile(req, res) {
   }
 }
 
+/**
+ * Deletes multiple files in bulk from Telegram channel and PostgreSQL database
+ */
+async function batchDeleteFiles(req, res) {
+  const { messageIds } = req.body;
+
+  if (!Array.isArray(messageIds) || messageIds.length === 0) {
+    return res.status(400).json({ error: 'messageIds must be a non-empty array of IDs.' });
+  }
+
+  const validIds = messageIds
+    .map((id) => parseInt(id, 10))
+    .filter((id) => !isNaN(id) && id > 0);
+
+  if (validIds.length === 0) {
+    return res.status(400).json({ error: 'No valid message IDs provided.' });
+  }
+
+  try {
+    const client = await getTelegramClient();
+    const channel = await getChannelEntity(client);
+
+    // Delete messages in batch from Telegram channel
+    try {
+      await client.deleteMessages(channel, validIds, { revoke: true });
+    } catch (telegramErr) {
+      console.warn('⚠️ Telegram deleteMessages warning:', telegramErr.message);
+    }
+
+    // Delete records from PostgreSQL via Prisma
+    const deleted = await prisma.file.deleteMany({
+      where: {
+        telegramMessageId: {
+          in: validIds,
+        },
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: `Successfully deleted ${deleted.count} file(s) from Telegram and database.`,
+      deletedCount: deleted.count,
+    });
+  } catch (error) {
+    console.error('❌ Error in batchDeleteFiles:', error);
+    return res.status(500).json({
+      error: 'Failed to delete selected files',
+      details: error.message,
+    });
+  }
+}
+
 module.exports = {
   uploadFile,
   listFiles,
   streamFile,
   deleteFile,
+  batchDeleteFiles,
   getUploadProgress,
 };
+

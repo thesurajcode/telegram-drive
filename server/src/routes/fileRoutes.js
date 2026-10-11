@@ -7,6 +7,7 @@ const {
   listFiles,
   streamFile,
   deleteFile,
+  batchDeleteFiles,
   getUploadProgress,
 } = require('../controllers/fileController');
 const {
@@ -120,6 +121,14 @@ router.get('/files', authMiddleware, listFiles);
  * Streams media directly from Telegram MTProto to the browser
  */
 router.get('/stream/:messageId', authMiddleware, streamFile);
+
+/**
+ * Route: POST /api/files/batch-delete
+ * Route: DELETE /api/files
+ * Batch deletes multiple media items from Telegram and PostgreSQL
+ */
+router.post('/files/batch-delete', authMiddleware, batchDeleteFiles);
+router.delete('/files', authMiddleware, batchDeleteFiles);
 
 /**
  * Route: DELETE /api/files/:messageId
